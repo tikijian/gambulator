@@ -4,19 +4,18 @@
 #include "constants.h"
 #include "types.h"
 #include "hardware/cpu.h"
+#include "hardware/memory.h"
 #include "software/utils.h"
 
 int main(int argc, char const *argv[])
 {
-    struct CPU cpu = cpu_init();
-    byte_t* memory = calloc(0xFFFF, sizeof(byte_t));
+    byte_t* memory = mem_init();
     read_rom("roms/Tetris.gb", memory);
 
-    for (int i = 0; i < 40; i++) {
-
-        printf("%04X\n", memory[i + ADDR_ROM_START]);
+    for (int i = 0; i < 20; i++) {
+        cpu_exec(mem_read(cpu.PC), memory);
     }
     
-    free(memory);
+    mem_free();
     return 0;
 }

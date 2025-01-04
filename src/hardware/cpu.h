@@ -27,4 +27,7 @@ struct CPU {
     // word_t HL;
 };
 
-struct CPU cpu_init();
+// I know that globals are bad :D
+extern struct CPU cpu;
+
+void cpu_exec(opcode_t, void* memory);
