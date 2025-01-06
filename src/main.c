@@ -17,7 +17,7 @@ int main(int argc, char const *argv[])
     for (int i = 0; i < 20; i++) {
         cpu_exec(mem_read(cpu.PC), memory);
     }
-    
+
     mem_free();
     return 0;
 }

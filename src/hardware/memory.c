@@ -2,6 +2,7 @@
 
 #include "../types.h"
 #include "../constants.h"
+#include "memory.h"
 
 
 byte_t* mem;
@@ -21,4 +22,9 @@ void
 mem_free()
 {
     free(mem);
+}
+
+void mem_write_byte(word_t address, byte_t value)
+{
+    mem[address] = value;
 }
