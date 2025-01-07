@@ -99,7 +99,6 @@ void JP_nn(opcode_t) {
 
 /* 8-bit loads */
 void LD_mem_from_reg(opcode_t current_opcode) {
-    byte_t target_reg = first_bit(current_opcode);
     word_t addr = cpu_HL();
     byte_t data = cpu_get_reg_by_code(current_opcode);
     mem_write_byte(cpu_HL(), data);
@@ -110,11 +109,9 @@ void LD_mem_from_reg(opcode_t current_opcode) {
 void INC_16(opcode_t current_opcode) {
     switch (last_bit(current_opcode)) {
         case 0x00: {
-            printf("BC: %04x\n", bytes_to_word(cpu.B, cpu.C));
             word_t value = bytes_to_word(cpu.B, cpu.C);
             value++;
             cpu_set_BC(value);
-            printf("BC: %04x\n", bytes_to_word(cpu.B, cpu.C));
             break;
         };
         case 0x10: {
@@ -174,6 +171,32 @@ void DEC_16(opcode_t current_opcode) {
 }
 /* -------------- */
 
+/* 8-Bit Arithmetics */
+void ADD_reg_to_A(opcode_t current_opcode) {
+    byte_t value = cpu_get_reg_by_code(current_opcode);
+    byte_t result = cpu.A + value;
+    byte_t flags = cpu.F;
+    flags = FLAG_SET_ZERO(result == 0 ? 1 : 0, flags);
+    flags = FLAG_SET_SUB(0, flags);
+
+    if (result > 0xFF) {
+        result = result - 256;
+        flags = FLAG_SET_CARRY(1, flags);   
+    } else {
+        flags = FLAG_SET_CARRY(0, flags);
+    }
+
+    if (FLAG_ADD_HALF_CARRY(cpu.A, value, result)) {
+        flags = FLAG_SET_HALF_CARRY(1, flags);   
+    } else {
+        flags = FLAG_SET_HALF_CARRY(0, flags);   
+    }
+
+    printf("ADD A: a: %i, val: %i, result %i\n", cpu.A, value, result);
+    cpu.A = result;    
+    cpu.F = flags;
+}
+/* -------------- */
 
 opcode_handler_t opcodes[0xFF] = {
     [0x03] = INC_16,
@@ -194,6 +217,15 @@ opcode_handler_t opcodes[0xFF] = {
     [0x75] = LD_mem_from_reg,
     [0x76] = NULL, // TODO: HALT
     [0x77] = LD_mem_from_reg,
+
+    [0x80] = ADD_reg_to_A,
+    [0x81] = ADD_reg_to_A,
+    [0x82] = ADD_reg_to_A,
+    [0x83] = ADD_reg_to_A,
+    [0x84] = ADD_reg_to_A,
+    [0x85] = ADD_reg_to_A,
+    [0x86] = ADD_reg_to_A,
+    [0x87] = ADD_reg_to_A,
 
     [0xc3] = JP_nn,
 };
