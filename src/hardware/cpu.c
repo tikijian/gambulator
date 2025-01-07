@@ -28,7 +28,9 @@ void cpu_exec(opcode_t opcode, void* mem) {
     if (opcode == OPCODE_PREFIX) {
         // read next instruction after prefix-opcode
         // TODO: check if should rewrite opcode variable or make new
+        printf("Prefix Opcode! ");
         opcode = mem_read(cpu.PC + 1);
+        cpu.PC++;
     }
 
     printf("CPU-PC: 0x%04X, OP: 0x%02X\n", cpu.PC, opcode);
@@ -39,7 +41,7 @@ void cpu_exec(opcode_t opcode, void* mem) {
     }
     
     if (!opcodes[opcode]) {
-        printf("CPU: Unknown OP-code!\n");
+        printf("CPU: Unknown OP-code: 0x%02X!\n", opcode);
         exit(-1);
     }
 
@@ -56,7 +58,6 @@ void JP_nn(opcode_t) {
 
 /* 8-bit loads */
 void LD_mem_from_reg(opcode_t current_opcode) {
-    word_t addr = cpu_HL();
     byte_t data = cpu_get_reg_by_code(current_opcode);
     mem_write_byte(cpu_HL(), data);
 }
@@ -83,14 +84,12 @@ void INC_16(opcode_t current_opcode) {
             cpu_set_HL(value);
             break;
         };
-        case 0x30: {
+        case 0x30:
             cpu.SP++;
             break;
-        };
-        default: {
+        default:
             printf("INC_16: unknown case 0x%02x\n", current_opcode);
             exit(-1);
-        }
     }
 }
 
@@ -115,14 +114,12 @@ void DEC_16(opcode_t current_opcode) {
             cpu_set_HL(value);
             break;
         };
-        case 0x30: {
+        case 0x30:
             cpu.SP--;
             break;
-        };
-        default: {
+        default:
             printf("DEC_16: unknown case 0x%02x\n", current_opcode);
             exit(-1);
-        }
     }
     printf("BC: %04x\n", bytes_to_word(cpu.B, cpu.C));
 }
@@ -139,9 +136,93 @@ void ADD_reg_to_A(opcode_t current_opcode) {
         result = result - 256;
     }
 
-    printf("ADD A: a: %i, val: %i, result %i\n", cpu.A, value, result);
     cpu.A = result;    
 }
+
+void INC_8_reg(opcode_t current_opcode) {
+    byte_t target;
+    switch (current_opcode) {
+        case 0x04:
+            target = cpu.B;
+            cpu.B++;
+            break;
+        case 0x14:
+            target = cpu.D;
+            cpu.D++;
+            break;
+        case 0x24:
+            target = cpu.H;
+            cpu.H++;
+            break;
+        case 0x34:
+            target = mem_read(cpu_HL());
+            mem_write_byte(cpu_HL(), target + 1);
+            break;
+        case 0x0C:
+            target = cpu.C;
+            cpu.C++;
+            break;
+        case 0x1C:
+            target = cpu.E;
+            cpu.E++;
+            break;
+        case 0x2C:
+            target = cpu.L;
+            cpu.L++;
+            break;
+        case 0x3C:
+            target = cpu.A;
+            cpu.A++;
+            break;
+        default:
+            printf("INC_8_reg: unknown case 0x%02x\n", current_opcode);
+            exit(-1);
+    }
+    cpu_update_flags(target, 1, target + 1, "Z0H-");
+}
+
+void DEC_8_reg(opcode_t current_opcode) {
+    byte_t target;
+    switch (current_opcode) {
+        case 0x05:
+            target = cpu.B;
+            cpu.B--;
+            break;
+        case 0x15:
+            target = cpu.D;
+            cpu.D--;
+            break;
+        case 0x25:
+            target = cpu.H;
+            cpu.H--;
+            break;
+        case 0x35:
+            target = mem_read(cpu_HL());
+            mem_write_byte(cpu_HL(), target - 1);
+            break;
+        case 0x0D:
+            target = cpu.C;
+            cpu.C--;
+            break;
+        case 0x1D:
+            target = cpu.E;
+            cpu.E--;
+            break;
+        case 0x2D:
+            target = cpu.L;
+            cpu.L--;
+            break;
+        case 0x3D:
+            target = cpu.A;
+            cpu.A--;
+            break;
+        default:
+            printf("DEC_8_reg: unknown case 0x%02x\n", current_opcode);
+            exit(-1);
+    }
+    cpu_update_flags(target, 1, target - 1, "Z1H-");
+}
+
 /* -------------- */
 
 opcode_handler_t opcodes[0xFF] = {
@@ -154,6 +235,24 @@ opcode_handler_t opcodes[0xFF] = {
     [0x1b] = DEC_16,
     [0x2b] = DEC_16,
     [0x3b] = DEC_16,
+
+    [0x04] = INC_8_reg,
+    [0x14] = INC_8_reg,
+    [0x24] = INC_8_reg,
+    [0x34] = INC_8_reg,
+    [0x0C] = INC_8_reg,
+    [0x1C] = INC_8_reg,
+    [0x2C] = INC_8_reg,
+    [0x3C] = INC_8_reg,
+
+    [0x05] = DEC_8_reg,
+    [0x15] = DEC_8_reg,
+    [0x25] = DEC_8_reg,
+    [0x35] = DEC_8_reg,
+    [0x0D] = DEC_8_reg,
+    [0x1D] = DEC_8_reg,
+    [0x2D] = DEC_8_reg,
+    [0x3D] = DEC_8_reg,
 
     [0x70] = LD_mem_from_reg,
     [0x71] = LD_mem_from_reg,
