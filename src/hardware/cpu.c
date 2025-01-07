@@ -5,6 +5,7 @@
 #include "../routines.h"
 #include "cpu.h"
 #include "memory.h"
+#include "cpu_helpers.h"
 
 
 opcode_handler_t opcodes[0xFF];
@@ -46,50 +47,6 @@ void cpu_exec(opcode_t opcode, void* mem) {
     opcodes[opcode](opcode);
 }
 
-/* CPU Helpers */
-word_t cpu_HL() {
-    return bytes_to_word(cpu.H, cpu.L);
-}
-word_t cpu_BC() {
-    return bytes_to_word(cpu.B, cpu.C);
-}
-word_t cpu_DE() {
-    return bytes_to_word(cpu.D, cpu.E);
-}
-void cpu_set_BC(word_t value) {
-    cpu.B = value >> 8;
-    cpu.C = value & 0x00FF;
-}
-void cpu_set_DE(word_t value) {
-    cpu.D = value >> 8;
-    cpu.E = value & 0x00FF;
-}
-void cpu_set_HL(word_t value) {
-    cpu.H = value >> 8;
-    cpu.L = value & 0x00FF;
-}
-byte_t cpu_get_reg_by_code(opcode_t code) {
-    switch (first_bit(code))
-    {
-        case 0x0: return cpu.B;
-        case 0x1: return cpu.C;
-        case 0x2: return cpu.D;
-        case 0x3: return cpu.E;
-        case 0x4: return cpu.H;
-        case 0x5: return cpu.L;
-        case 0x6: return mem_read(cpu_HL());
-        case 0x7: return cpu.A;
-        case 0x8: return cpu.B;
-        case 0x9: return cpu.C;
-        case 0xA: return cpu.D;
-        case 0xB: return cpu.E;
-        case 0xC: return cpu.H;
-        case 0xD: return cpu.L;
-        case 0xE: return mem_read(cpu_HL());
-        case 0xF: return cpu.A;
-    }
-}
-/* -------------- */
 
 /* Control Flow-s */
 void JP_nn(opcode_t) {
@@ -175,26 +132,15 @@ void DEC_16(opcode_t current_opcode) {
 void ADD_reg_to_A(opcode_t current_opcode) {
     byte_t value = cpu_get_reg_by_code(current_opcode);
     byte_t result = cpu.A + value;
-    byte_t flags = cpu.F;
-    flags = FLAG_SET_ZERO(result == 0 ? 1 : 0, flags);
-    flags = FLAG_SET_SUB(0, flags);
+    cpu_update_flags(cpu.A, value, result, "Z0HC");
 
+    // should this happen before flags update??
     if (result > 0xFF) {
         result = result - 256;
-        flags = FLAG_SET_CARRY(1, flags);   
-    } else {
-        flags = FLAG_SET_CARRY(0, flags);
-    }
-
-    if (FLAG_ADD_HALF_CARRY(cpu.A, value, result)) {
-        flags = FLAG_SET_HALF_CARRY(1, flags);   
-    } else {
-        flags = FLAG_SET_HALF_CARRY(0, flags);   
     }
 
     printf("ADD A: a: %i, val: %i, result %i\n", cpu.A, value, result);
     cpu.A = result;    
-    cpu.F = flags;
 }
 /* -------------- */
 

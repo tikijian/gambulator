@@ -4,6 +4,7 @@
 #include "constants.h"
 #include "types.h"
 #include "hardware/cpu.h"
+#include "hardware/cpu_helpers.h"
 #include "hardware/memory.h"
 #include "software/utils.h"
 #include "routines.h"

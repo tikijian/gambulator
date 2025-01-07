@@ -3,10 +3,10 @@
 #ifndef _ROUTINES
 #define _ROUTINES
 
-#define first_bit(byte) byte & 0x0F
-#define last_bit(byte) byte & 0xF0
+#define first_bit(byte) (byte & 0x0F)
+#define last_bit(byte) (byte & 0xF0)
 
-#define bytes_to_word(msb, lsb) (msb << 8) | lsb
+#define bytes_to_word(msb, lsb) ((msb << 8) | lsb)
 
 #define FLAG_SET(value, flags, bit) ((value) > 0 ? flags | (1 << bit) : flags & ~(1 << bit))
 #define FLAG_SET_ZERO(value, flags) FLAG_SET(value, flags, FLAG_ZERO_BIT)
