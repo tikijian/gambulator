@@ -33,15 +33,16 @@ void cpu_exec(opcode_t opcode, void* mem) {
         cpu.PC++;
     }
 
-    printf("CPU-PC: 0x%04X, OP: 0x%02X\n", cpu.PC, opcode);
+    // printf("CPU-PC: 0x%04X, OP: 0x%02X\n", cpu.PC, opcode);
     // NOP
     if (opcode == 0x00) {
         cpu.PC++;
         return;
     }
+    // printf("CPU-PC: 0x%04X, OP: 0x%02X\n", cpu.PC, opcode);
     
     if (!opcodes[opcode]) {
-        printf("CPU: Unknown OP-code: 0x%02X!\n", opcode);
+        printf("CPU: Unknown OP-code: 0x%02X at 0x%04X\n", opcode, cpu.PC);
         exit(-1);
     }
 
@@ -53,6 +54,16 @@ void cpu_exec(opcode_t opcode, void* mem) {
 /* Control Flow-s */
 void JP_nn(opcode_t) {
     cpu.PC = bytes_to_word(mem_read(cpu.PC + 1), mem_read(cpu.PC));
+}
+/* -------------- */
+
+
+/* 16-bit loads */
+void LD_mem_from_SP(opcode_t) {
+    word_t addr = bytes_to_word(mem_read(cpu.PC + 1), mem_read(cpu.PC));
+    mem_write_byte(addr, LS_BYTE(cpu.SP));
+    mem_write_byte(addr + 1, MS_BYTE(cpu.SP));
+    cpu.PC += 2;
 }
 /* -------------- */
 
@@ -253,6 +264,8 @@ opcode_handler_t opcodes[0xFF] = {
     [0x1D] = DEC_8_reg,
     [0x2D] = DEC_8_reg,
     [0x3D] = DEC_8_reg,
+
+    [0x08] = LD_mem_from_SP,
 
     [0x70] = LD_mem_from_reg,
     [0x71] = LD_mem_from_reg,

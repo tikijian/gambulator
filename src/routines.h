@@ -6,7 +6,10 @@
 #define first_bit(byte) (byte & 0x0F)
 #define last_bit(byte) (byte & 0xF0)
 
-#define bytes_to_word(msb, lsb) ((msb << 8) | lsb)
+#define MS_BYTE(word) ((byte_t)(word >> 8))
+#define LS_BYTE(word) ((byte_t)(word & 0x00FF))
+
+#define bytes_to_word(msb, lsb) (((msb) << 8) | (lsb))
 
 #define FLAG_SET(value, flags, bit) ((value) > 0 ? flags | (1 << bit) : flags & ~(1 << bit))
 #define FLAG_SET_ZERO(value, flags) FLAG_SET(value, flags, FLAG_ZERO_BIT)
