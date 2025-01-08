@@ -11,6 +11,12 @@
 
 #define bytes_to_word(msb, lsb) (((msb) << 8) | (lsb))
 
+#define CHECK_BIT(bit) ((cpu.F) & (1<<(bit)))
+
+#define FLAG_ZERO CHECK_BIT(FLAG_ZERO_BIT)
+#define FLAG_SUB CHECK_BIT(FLAG_SUB_BIT)
+#define FLAG_HALF_CARRY CHECK_BIT(FLAG_HALF_CARRY_BIT)
+#define FLAG_CARRY CHECK_BIT(FLAG_CARRY_BIT)
 #define FLAG_SET(value, flags, bit) ((value) > 0 ? flags | (1 << bit) : flags & ~(1 << bit))
 #define FLAG_SET_ZERO(value, flags) FLAG_SET(value, flags, FLAG_ZERO_BIT)
 #define FLAG_SET_SUB(value, flags) FLAG_SET(value, flags, FLAG_SUB_BIT)

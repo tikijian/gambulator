@@ -33,7 +33,7 @@ void cpu_exec(opcode_t opcode, void* mem) {
         cpu.PC++;
     }
 
-    // printf("CPU-PC: 0x%04X, OP: 0x%02X\n", cpu.PC, opcode);
+    printf("CPU-PC: 0x%04X, OP: 0x%02X\n", cpu.PC, opcode);
     // NOP
     if (opcode == 0x00) {
         cpu.PC++;
@@ -140,6 +140,19 @@ void DEC_16(opcode_t current_opcode) {
 void ADD_reg_to_A(opcode_t current_opcode) {
     byte_t value = cpu_get_reg_by_code(current_opcode);
     byte_t result = cpu.A + value;
+    cpu_update_flags(cpu.A, value, result, "Z0HC");
+
+    // should this happen before flags update??
+    if (result > 0xFF) {
+        result = result - 256;
+    }
+
+    cpu.A = result;    
+}
+
+void ADC_reg_to_A(opcode_t current_opcode) {
+    byte_t value = cpu_get_reg_by_code(current_opcode);
+    byte_t result = cpu.A + value + FLAG_CARRY;
     cpu_update_flags(cpu.A, value, result, "Z0HC");
 
     // should this happen before flags update??
@@ -284,6 +297,15 @@ opcode_handler_t opcodes[0xFF] = {
     [0x85] = ADD_reg_to_A,
     [0x86] = ADD_reg_to_A,
     [0x87] = ADD_reg_to_A,
+
+    [0x88] = ADC_reg_to_A,
+    [0x89] = ADC_reg_to_A,
+    [0x8A] = ADC_reg_to_A,
+    [0x8B] = ADC_reg_to_A,
+    [0x8C] = ADC_reg_to_A,
+    [0x8D] = ADC_reg_to_A,
+    [0x8E] = ADC_reg_to_A,
+    [0x8F] = ADC_reg_to_A,
 
     [0xc3] = JP_nn,
 };
