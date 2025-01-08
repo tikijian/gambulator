@@ -11,7 +11,7 @@
 
 #define bytes_to_word(msb, lsb) (((msb) << 8) | (lsb))
 
-#define CHECK_BIT(bit) ((cpu.F) & (1<<(bit)))
+#define CHECK_BIT(bit) (!!((cpu.F) & (1<<(bit))))
 
 #define FLAG_ZERO CHECK_BIT(FLAG_ZERO_BIT)
 #define FLAG_SUB CHECK_BIT(FLAG_SUB_BIT)

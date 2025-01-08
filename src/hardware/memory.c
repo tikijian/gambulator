@@ -2,6 +2,7 @@
 
 #include "../types.h"
 #include "../constants.h"
+#include "../routines.h"
 #include "memory.h"
 
 
@@ -27,4 +28,8 @@ mem_free()
 void mem_write_byte(word_t address, byte_t value)
 {
     mem[address] = value;
+}
+
+word_t mem_read_word(word_t current_pc) {
+    return bytes_to_word(mem_read(current_pc + 1), mem_read(current_pc));
 }

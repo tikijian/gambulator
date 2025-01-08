@@ -103,3 +103,11 @@ void cpu_update_flags(byte_t a, byte_t b, byte_t result, char* flag_operations){
 
     cpu.F = flags;
 }
+
+void cpu_push_pc()
+{
+    cpu.SP--;
+    mem_write_byte(cpu.SP, MS_BYTE(cpu.PC));
+    cpu.SP--;
+    mem_write_byte(cpu.SP, LS_BYTE(cpu.PC));
+}
