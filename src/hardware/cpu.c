@@ -65,6 +65,31 @@ void JP_nn(opcode_t) {
     printf("jumping to %04x\n", cpu.PC);
 }
 
+void JR_cond(opcode_t current_opcode) {
+    // check: signed8(offset)
+    word_t offset = mem_read_word(cpu.PC);
+    cpu.PC++;
+
+    byte_t condition_result = 0;
+    switch (current_opcode) {
+        case 0x20: // NZ
+            condition_result = !FLAG_ZERO; break;
+        case 0x30: // NC
+            condition_result = !FLAG_CARRY; break;
+        case 0x28: // Z
+            condition_result = FLAG_ZERO; break;
+        case 0x38: // C
+            condition_result = FLAG_CARRY; break;
+        default:
+            printf("JR_cond: unknown case 0x%02x\n", current_opcode);
+            exit(-1);
+    }
+
+    if (condition_result) {
+        cpu.PC += offset;
+    }
+}
+
 void RET(opcode_t) {
     // printf("reading mem from SP: %04X\n", cpu.SP);
     byte_t lsb = mem_read(cpu.SP); cpu.SP++;
@@ -107,6 +132,32 @@ void CALL_cond(opcode_t current_opcode) {
 
 
 /* 16-bit loads */
+void LD_mem_from_A(opcode_t current_opcode) {
+    word_t addr;
+    switch (current_opcode) {
+        case 0x02:
+            addr = cpu_BC(); break;
+        case 0x12:
+            addr = cpu_DE(); break;
+        case 0x22: {
+            word_t HL;
+            addr = HL;
+            cpu_set_HL(HL + 1);
+            break;
+        }
+        case 0x32: {
+            word_t HL;
+            addr = HL;
+            cpu_set_HL(HL - 1);
+            break;
+        }
+        default:
+            printf("LD_mem_from_A: unknown case 0x%02x\n", current_opcode);
+            exit(-1);
+    }
+    mem_write_byte(addr, cpu.A);
+}
+
 void LD_mem_from_SP(opcode_t) {
     word_t addr = mem_read_word(cpu.PC);
     // printf("addr %04X = %02X, addr %04X = %02X\n", addr, LS_BYTE(cpu.SP), addr + 1, MS_BYTE(cpu.SP));
@@ -389,6 +440,16 @@ opcode_handler_t opcodes[0xFF] = {
     [0x11] = LD_16reg_from_mem,
     [0x21] = LD_16reg_from_mem,
     [0x31] = LD_16reg_from_mem,
+
+    [0x20] = JR_cond,
+    [0x30] = JR_cond,
+    [0x28] = JR_cond,
+    [0x38] = JR_cond,
+
+    [0x02] = LD_mem_from_A,
+    [0x12] = LD_mem_from_A,
+    [0x22] = LD_mem_from_A,
+    [0x32] = LD_mem_from_A,
 
     [0x03] = INC_16,
     [0x13] = INC_16,
