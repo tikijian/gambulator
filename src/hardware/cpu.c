@@ -179,6 +179,34 @@ void LD_8reg_from_mem(opcode_t current_opcode) {
     }
     cpu.PC++;
 }
+
+void LD_A_from_mem_at_16_reg(opcode_t current_opcode) {
+    byte_t data;
+    switch (current_opcode) {   
+        case 0x0A:
+            data = mem_read(cpu_BC());
+            break;
+        case 0x1A:
+            data = mem_read(cpu_DE());
+            break;
+        case 0x2A: {
+            word_t HL = cpu_HL(); 
+            data = mem_read(HL);
+            cpu_set_HL(HL + 1);
+            break;
+        }
+        case 0x3A: {
+            word_t HL = cpu_HL(); 
+            data = mem_read(HL);
+            cpu_set_HL(HL - 1);
+            break;
+        }
+        default:
+            printf("LD_A_from_mem_at_16_reg: unknown case 0x%02x\n", current_opcode);
+            exit(-1);
+    }
+    cpu.A = data;
+}
 /* -------------- */
 
 /* 16-bit arithmetics */
@@ -400,6 +428,11 @@ opcode_handler_t opcodes[0xFF] = {
     [0x1E] = LD_8reg_from_mem,
     [0x2E] = LD_8reg_from_mem,
     [0x3E] = LD_8reg_from_mem,
+
+    [0x0A] = LD_A_from_mem_at_16_reg,
+    [0x1A] = LD_A_from_mem_at_16_reg,
+    [0x2A] = LD_A_from_mem_at_16_reg,
+    [0x3A] = LD_A_from_mem_at_16_reg,
 
     [0x40 ... 0x6F] = LD_8reg_to_reg,
 
