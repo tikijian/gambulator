@@ -19,6 +19,8 @@ struct CPU cpu = {
         .H = 0x01,
         .L = 0x4d,
         .F = 0xb0,
+
+        .Z = 1,
         
         .SP = 0xfffe,
         .PC = 0x0100,
@@ -34,22 +36,25 @@ void cpu_exec(opcode_t opcode, void* mem) {
     }
 
     // printf("CPU-PC: 0x%04X, OP: 0x%02X\n", cpu.PC, opcode);
+    // if (cpu.SP > 0x200)
+        printf("PC: 0x%04X, OP: 0x%02X, A: %02X, SP: %04X, C: %02X, D: %02X, Z: %i\n", cpu.PC, opcode, cpu.A, cpu.SP, cpu.C, cpu.D, cpu.Z);
     // NOP
     if (opcode == 0x00) {
         cpu.PC++;
         return;
     }
-    // printf("CPU-PC: 0x%04X, OP: 0x%02X\n", cpu.PC, opcode);
+    // printf("PC: 0x%04X, OP: 0x%02X, A: %02X, SP: %04X, C: %02X, D: %02X, Z: %i\n", cpu.PC, opcode, cpu.A, cpu.SP, cpu.C, cpu.D, cpu.Z);
+    // printf("\nCPU-PC: 0x%04X, OP: 0x%02X, A: %02X, B: %02X, C: %02X, D: %02X, Z: %i\n", cpu.PC, opcode, cpu.A, cpu.B, cpu.C, cpu.D, cpu.Z);
     
     if (!opcodes[opcode]) {
         printf("CPU: Unknown OP-code: 0x%02X at 0x%04X\n", opcode, cpu.PC);
         exit(-1);
     }
 
-    printf("op: 0x%02x - flag %02x, flags %02x \n", opcode, FLAG_ZERO, cpu.F);
+    // printf("op: 0x%02x - flag %02x, flags %02x \n", opcode, FLAG_ZERO, cpu.F);
     cpu.PC++;
     opcodes[opcode](opcode);
-    printf("op: 0x%02x - flag %02x, flags %02x \n\n", opcode, FLAG_ZERO, cpu.F);
+    // printf("op: 0x%02x - flag %02x, flags %02x \n\n", opcode, FLAG_ZERO, cpu.F);
 
 }
 
@@ -57,6 +62,15 @@ void cpu_exec(opcode_t opcode, void* mem) {
 /* Control Flow-s */
 void JP_nn(opcode_t) {
     cpu.PC = mem_read_word(cpu.PC);
+    printf("jumping to %04x\n", cpu.PC);
+}
+
+void RET(opcode_t) {
+    // printf("reading mem from SP: %04X\n", cpu.SP);
+    byte_t lsb = mem_read(cpu.SP); cpu.SP++;
+    byte_t msb = mem_read(cpu.SP); cpu.SP++;
+    // printf("mem is %02X %02x - %04X\n", msb, lsb, bytes_to_word(msb, lsb));
+    cpu.PC = bytes_to_word(msb, lsb);
 }
 
 void CALL_cond(opcode_t current_opcode) {
@@ -73,6 +87,7 @@ void CALL_cond(opcode_t current_opcode) {
             break;
         case 0xCC: // Z
             condition_result = FLAG_ZERO;
+            // condition_result = cpu.Z;
             break;
         case 0xDC: // C
             condition_result = FLAG_CARRY;
@@ -81,7 +96,7 @@ void CALL_cond(opcode_t current_opcode) {
             printf("CALL_cond: unknown case 0x%02x\n", current_opcode);
             exit(-1);
     }
-    printf("flag %02x, flags %02x, cond: %i\n", FLAG_ZERO, cpu.F, condition_result);
+    printf("addr to call: %04X, Z %02x, cond: %i\n", addr, FLAG_ZERO, cpu.Z, condition_result);
 
     if (condition_result) {
         cpu_push_pc();
@@ -94,9 +109,29 @@ void CALL_cond(opcode_t current_opcode) {
 /* 16-bit loads */
 void LD_mem_from_SP(opcode_t) {
     word_t addr = mem_read_word(cpu.PC);
+    // printf("addr %04X = %02X, addr %04X = %02X\n", addr, LS_BYTE(cpu.SP), addr + 1, MS_BYTE(cpu.SP));
+    cpu.PC += 2;
     mem_write_byte(addr, LS_BYTE(cpu.SP));
     mem_write_byte(addr + 1, MS_BYTE(cpu.SP));
+}
+
+void LD_16reg_from_mem(opcode_t current_opcode) {
+    word_t value = mem_read_word(cpu.PC);
     cpu.PC += 2;
+
+    switch (current_opcode) {
+        case 0x01:
+            cpu_set_BC(value); break;
+        case 0x11:
+            cpu_set_DE(value); break;
+        case 0x21:
+            cpu_set_HL(value); break;
+        case 0x31:
+            cpu.SP = value; break;
+        default:
+            printf("LD_16reg_from_mem: unknown case 0x%02x\n", current_opcode);
+            exit(-1);
+    }
 }
 /* -------------- */
 
@@ -106,7 +141,12 @@ void LD_mem_from_reg(opcode_t current_opcode) {
     mem_write_byte(cpu_HL(), data);
 }
 
-void LD_8_reg(opcode_t current_opcode) {
+void LD_8reg_to_reg(opcode_t current_opcode) {
+    byte_t data = cpu_get_reg_by_code(current_opcode);
+    cpu_set_reg_by_code(current_opcode, data);
+}
+
+void LD_8reg_from_mem(opcode_t current_opcode) {
     byte_t value = mem_read(cpu.PC);
     switch (current_opcode) {
         case 0x06:
@@ -134,7 +174,7 @@ void LD_8_reg(opcode_t current_opcode) {
             cpu.A = value;
             break;
         default:
-            printf("LD_8_reg: unknown case 0x%02x\n", current_opcode);
+            printf("LD_8reg_from_mem: unknown case 0x%02x\n", current_opcode);
             exit(-1);
     }
     cpu.PC++;
@@ -317,6 +357,11 @@ void DEC_8_reg(opcode_t current_opcode) {
 /* -------------- */
 
 opcode_handler_t opcodes[0xFF] = {
+    [0x01] = LD_16reg_from_mem,
+    [0x11] = LD_16reg_from_mem,
+    [0x21] = LD_16reg_from_mem,
+    [0x31] = LD_16reg_from_mem,
+
     [0x03] = INC_16,
     [0x13] = INC_16,
     [0x23] = INC_16,
@@ -347,14 +392,16 @@ opcode_handler_t opcodes[0xFF] = {
 
     [0x08] = LD_mem_from_SP,
 
-    [0x06] = LD_8_reg,
-    [0x16] = LD_8_reg,
-    [0x26] = LD_8_reg,
-    [0x36] = LD_8_reg,
-    [0x0E] = LD_8_reg,
-    [0x1E] = LD_8_reg,
-    [0x2E] = LD_8_reg,
-    [0x3E] = LD_8_reg,
+    [0x06] = LD_8reg_from_mem,
+    [0x16] = LD_8reg_from_mem,
+    [0x26] = LD_8reg_from_mem,
+    [0x36] = LD_8reg_from_mem,
+    [0x0E] = LD_8reg_from_mem,
+    [0x1E] = LD_8reg_from_mem,
+    [0x2E] = LD_8reg_from_mem,
+    [0x3E] = LD_8reg_from_mem,
+
+    [0x40 ... 0x6F] = LD_8reg_to_reg,
 
     [0x70] = LD_mem_from_reg,
     [0x71] = LD_mem_from_reg,
@@ -388,4 +435,5 @@ opcode_handler_t opcodes[0xFF] = {
     [0xD4] = CALL_cond,
     [0xCC] = CALL_cond,
     [0xD4] = CALL_cond,
+    [0xC9] = RET,
 };

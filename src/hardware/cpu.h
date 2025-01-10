@@ -7,6 +7,8 @@ struct CPU {
     word_t SP;
     // Prgram Counter
     word_t PC;
+
+    byte_t Z;
 };
 
 // I know that globals are bad :D

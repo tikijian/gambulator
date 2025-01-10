@@ -53,6 +53,29 @@ byte_t cpu_get_reg_by_code(opcode_t code) {
     }
 }
 
+void cpu_set_reg_by_code(opcode_t code, byte_t value) {
+    switch (code) {
+        case 0x40 ... 0x47:
+            cpu.B = value;
+            return;
+        case 0x48 ... 0x4F:
+            cpu.C = value;
+            return;
+        case 0x50 ... 0x57:
+            cpu.D = value;
+            return;
+        case 0x58 ... 0x5F:
+            cpu.E = value;
+            return;
+        case 0x60 ... 0x67:
+            cpu.H = value;
+            return;
+        case 0x68 ... 0x6F:
+            cpu.L = value;
+            return;
+    }
+}
+
 /*
     Universal Cpu Flag register updater.
     @param byte_t a - first operand
@@ -64,9 +87,11 @@ void cpu_update_flags(byte_t a, byte_t b, byte_t result, char* flag_operations){
     if (flag_operations[0] != '-') {
         if (flag_operations[0] == 'Z') {
             flags = FLAG_SET_ZERO(result == 0 ? 1 : 0, flags);
+            cpu.Z = result == 0 ? 1 : 0;
         } else {
             byte_t val = flag_operations[0] == '1' ? 1 : 0;
             flags = FLAG_SET_ZERO(val, flags);
+            cpu.Z = val;
         }
     }
 

@@ -17,7 +17,7 @@ void read_rom(const char* rom_name, void* memory) {
 
     printf("Reading rom: %s, size %ld bytes...\n", rom_name, file_size);
 
-    if (fread(memory + ADDR_ROM_START, sizeof(char), file_size, fp) != file_size) {
+    if (fread(memory, sizeof(char), file_size, fp) != file_size) {
         perror("Error reading file!\n");
 
         fclose(fp);
