@@ -37,13 +37,13 @@ void cpu_exec(opcode_t opcode, void* mem) {
 
     // printf("CPU-PC: 0x%04X, OP: 0x%02X\n", cpu.PC, opcode);
     // if (cpu.SP > 0x200)
-        printf("PC: 0x%04X, OP: 0x%02X, A: %02X, SP: %04X, C: %02X, D: %02X, Z: %i\n", cpu.PC, opcode, cpu.A, cpu.SP, cpu.C, cpu.D, cpu.Z);
+        // printf("PC: 0x%04X, OP: 0x%02X, A: %02X, SP: %04X, C: %02X, D: %02X, Z: %i\n", cpu.PC, opcode, cpu.A, cpu.SP, cpu.C, cpu.D, cpu.Z);
     // NOP
     if (opcode == 0x00) {
         cpu.PC++;
         return;
     }
-    // printf("PC: 0x%04X, OP: 0x%02X, A: %02X, SP: %04X, C: %02X, D: %02X, Z: %i\n", cpu.PC, opcode, cpu.A, cpu.SP, cpu.C, cpu.D, cpu.Z);
+    printf("PC: 0x%04X, OP: 0x%02X, A: %02X, SP: %04X, C: %02X, D: %02X, Z: %i\n", cpu.PC, opcode, cpu.A, cpu.SP, cpu.C, cpu.D, cpu.Z);
     // printf("\nCPU-PC: 0x%04X, OP: 0x%02X, A: %02X, B: %02X, C: %02X, D: %02X, Z: %i\n", cpu.PC, opcode, cpu.A, cpu.B, cpu.C, cpu.D, cpu.Z);
     
     if (!opcodes[opcode]) {
@@ -60,6 +60,15 @@ void cpu_exec(opcode_t opcode, void* mem) {
 
 
 /* Control Flow-s */
+void HALT(opcode_t) {
+    printf("HALT\n");
+    exit(0);
+}
+void STOP(opcode_t) {
+    printf("STOP\n");
+    exit(0);
+}
+
 void JP_nn(opcode_t) {
     cpu.PC = mem_read_word(cpu.PC);
     printf("jumping to %04x\n", cpu.PC);
@@ -433,9 +442,47 @@ void DEC_8_reg(opcode_t current_opcode) {
     cpu_update_flags(target, 1, target - 1, "Z1H-");
 }
 
+void AND_8_reg(opcode_t current_opcode) {
+    byte_t val;
+    if (current_opcode == 0xE6) {
+        val = mem_read(cpu.PC);
+        cpu.PC++;
+    } else {
+        val = cpu_get_reg_by_code(current_opcode);
+    }
+    byte_t new_val = cpu.A & val;
+    cpu_update_flags(cpu.A, val, new_val, "Z010");
+}
+
+void XOR_8_reg(opcode_t current_opcode) {
+    byte_t val;
+    if (current_opcode == 0xEE) {
+        val = mem_read(cpu.PC);
+        cpu.PC++;
+    } else {
+        val = cpu_get_reg_by_code(current_opcode);
+    }
+    byte_t new_val = cpu.A ^ val;
+    cpu_update_flags(cpu.A, val, new_val, "Z000");
+}
+
+void OR_8_reg(opcode_t current_opcode) {
+    byte_t val;
+    if (current_opcode == 0xF6) {
+        val = mem_read(cpu.PC);
+        cpu.PC++;
+    } else {
+        val = cpu_get_reg_by_code(current_opcode);
+    }
+    byte_t new_val = cpu.A | val;
+    cpu_update_flags(cpu.A, val, new_val, "Z000");
+}
+
 /* -------------- */
 
 opcode_handler_t opcodes[0xFF] = {
+    [0x10] = STOP,
+
     [0x01] = LD_16reg_from_mem,
     [0x11] = LD_16reg_from_mem,
     [0x21] = LD_16reg_from_mem,
@@ -503,26 +550,12 @@ opcode_handler_t opcodes[0xFF] = {
     [0x73] = LD_mem_from_reg,
     [0x74] = LD_mem_from_reg,
     [0x75] = LD_mem_from_reg,
-    [0x76] = NULL, // TODO: HALT
+    [0x76] = HALT,
     [0x77] = LD_mem_from_reg,
 
-    [0x80] = ADD_reg_to_A,
-    [0x81] = ADD_reg_to_A,
-    [0x82] = ADD_reg_to_A,
-    [0x83] = ADD_reg_to_A,
-    [0x84] = ADD_reg_to_A,
-    [0x85] = ADD_reg_to_A,
-    [0x86] = ADD_reg_to_A,
-    [0x87] = ADD_reg_to_A,
+    [0x80 ... 0x87] = ADD_reg_to_A,
 
-    [0x88] = ADC_reg_to_A,
-    [0x89] = ADC_reg_to_A,
-    [0x8A] = ADC_reg_to_A,
-    [0x8B] = ADC_reg_to_A,
-    [0x8C] = ADC_reg_to_A,
-    [0x8D] = ADC_reg_to_A,
-    [0x8E] = ADC_reg_to_A,
-    [0x8F] = ADC_reg_to_A,
+    [0x88 ... 0x8F] = ADC_reg_to_A,
 
     [0xC3] = JP_nn,
     [0xC4] = CALL_cond,
@@ -530,4 +563,13 @@ opcode_handler_t opcodes[0xFF] = {
     [0xCC] = CALL_cond,
     [0xD4] = CALL_cond,
     [0xC9] = RET,
+
+    [0xA0 ... 0xA7] = AND_8_reg,
+    [0xE6] = AND_8_reg,
+    
+    [0xA8 ... 0xAF] = XOR_8_reg,
+    [0xEE] = XOR_8_reg,
+    
+    [0xB0 ... 0xB7] = OR_8_reg,
+    [0xF6] = OR_8_reg,
 };
