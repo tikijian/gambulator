@@ -7,7 +7,12 @@
 #include "memory.h"
 #include "cpu_helpers.h"
 
-
+byte_t cpu_F() {
+    return cpu.FZ << FLAG_ZERO_BIT | cpu.FN << FLAG_SUB_BIT | cpu.FH << FLAG_HALF_CARRY_BIT | cpu.FC << FLAG_CARRY_BIT;
+}
+word_t cpu_AF() {
+    return bytes_to_word(cpu.A, cpu_F());
+}
 word_t cpu_HL() {
     return bytes_to_word(cpu.H, cpu.L);
 }
@@ -73,6 +78,19 @@ void cpu_set_reg_by_code(opcode_t code, byte_t value) {
         case 0x68 ... 0x6F:
             cpu.L = value;
             return;
+    }
+}
+
+word_t cpu_stack_target_by_code(opcode_t code) {
+    switch (last_bit(code)) {
+        case 0xC0: return cpu_BC();
+        case 0xD0: return cpu_DE();
+        case 0xE0: return cpu_HL();
+        case 0xF0: return cpu_AF();
+        default: {
+            printf("stack_target_by_code: unknown case 0x%02x\n", code);
+            exit(-1);
+        }
     }
 }
 

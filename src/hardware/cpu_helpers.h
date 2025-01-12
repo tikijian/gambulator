@@ -1,5 +1,7 @@
 #include "../types.h"
 
+byte_t cpu_F();
+word_t cpu_AF();
 word_t cpu_HL();
 word_t cpu_BC();
 word_t cpu_DE();

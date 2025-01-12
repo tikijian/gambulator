@@ -530,6 +530,62 @@ void DAA(opcode_t) {
 }
 /* -------------- */
 
+/* Stack operations */
+void PUSH(opcode_t current_opcode) {
+    switch (current_opcode) {
+        case 0xC5:
+            cpu.SP--; mem_write_byte(cpu.SP, cpu.B);
+            cpu.SP--; mem_write_byte(cpu.SP, cpu.C);
+            break;
+        case 0xD5:
+            cpu.SP--; mem_write_byte(cpu.SP, cpu.D);
+            cpu.SP--; mem_write_byte(cpu.SP, cpu.E);
+            break;
+        case 0xE5:
+            cpu.SP--; mem_write_byte(cpu.SP, cpu.H);
+            cpu.SP--; mem_write_byte(cpu.SP, cpu.L);
+            break;
+        case 0xF5:
+            cpu.SP--; mem_write_byte(cpu.SP, cpu.A);
+            cpu.SP--; mem_write_byte(cpu.SP, cpu_F());
+            break;
+        default:
+            printf("PUSH: unknown case 0x%02x\n", current_opcode);
+            exit(-1);
+        } 
+}
+
+void POP(opcode_t current_opcode) {
+    switch (current_opcode) {
+        case 0xC1:
+            cpu.C = mem_read(cpu.SP); cpu.SP++;
+            cpu.B = mem_read(cpu.SP); cpu.SP++;
+            break;
+        case 0xD1:
+            cpu.E = mem_read(cpu.SP); cpu.SP++;
+            cpu.D = mem_read(cpu.SP); cpu.SP++;
+            break;
+        case 0xE1:
+            cpu.L = mem_read(cpu.SP); cpu.SP++;
+            cpu.H = mem_read(cpu.SP); cpu.SP++;
+            break;
+        case 0xF1: {
+            byte_t F = mem_read(cpu.SP); cpu.SP++;
+            cpu.A    = mem_read(cpu.SP); cpu.SP++;
+            cpu.FZ = CHECK_BIT(F, FLAG_ZERO_BIT);
+            cpu.FN = CHECK_BIT(F, FLAG_SUB_BIT);
+            cpu.FH = CHECK_BIT(F, FLAG_HALF_CARRY_BIT);
+            cpu.FC = CHECK_BIT(F, FLAG_CARRY_BIT);
+            break;
+        }
+        default:
+            printf("POP: unknown case 0x%02x\n", current_opcode);
+            exit(-1);
+        } 
+}
+/* -------------- */
+
+
 opcode_handler_t opcodes[0xFF] = {
     [0x10] = STOP,
 
@@ -631,4 +687,14 @@ opcode_handler_t opcodes[0xFF] = {
 
     [0xB8 ... 0xBF] = CP_8_reg,
     [0xFE]          = CP_8_reg,
+
+    [0xC1] = POP,
+    [0xD1] = POP,
+    [0xE1] = POP,
+    [0xF1] = POP,
+
+    [0xC5] = PUSH,
+    [0xD5] = PUSH,
+    [0xE5] = PUSH,
+    [0xF5] = PUSH,
 };

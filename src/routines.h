@@ -11,7 +11,7 @@
 
 #define bytes_to_word(msb, lsb) (((msb) << 8) | (lsb))
 
-#define CHECK_BIT(bit) (!!((cpu.F) & (1<<(bit))))
+#define CHECK_BIT(value, bit) (((value >> bit) & 1) > 0 ? 1 : 0)
 
 #define CHECK_ZERO(val) ((val & 0xFF) == 0x00)
 #define CHECK_OVERFLOW(val) (val > 0x00FF)
