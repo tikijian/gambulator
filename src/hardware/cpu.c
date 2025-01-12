@@ -33,8 +33,11 @@ void cpu_exec(opcode_t opcode, void* mem) {
         // read next instruction after prefix-opcode
         // TODO: check if should rewrite opcode variable or make new
         printf("Prefix Opcode! ");
-        opcode = mem_read(cpu.PC + 1);
         cpu.PC++;
+        opcode = mem_read(cpu.PC);
+        // execute prefixed opcode
+        // cpu.PC++
+        exit(-1);
     }
 
     // printf("CPU-PC: 0x%04X, OP: 0x%02X\n", cpu.PC, opcode);
@@ -346,6 +349,22 @@ void ADC_reg_to_A(opcode_t current_opcode) {
     cpu_update_flags(cpu.A, value, result, "Z0HC");
 }
 
+void SUB_reg_from_A(opcode_t current_opcode) {
+    byte_t value = cpu_get_reg_by_code(current_opcode);
+    word_t result = cpu.A - value;
+    
+    cpu.A = (byte_t)result;    
+    cpu_update_flags(cpu.A, value, result, "Z1HC");
+}
+
+void SBC_reg_from_A(opcode_t current_opcode) {
+    byte_t value = cpu_get_reg_by_code(current_opcode);
+    word_t result = cpu.A - value - cpu.FC;
+    
+    cpu.A = (byte_t)result;    
+    cpu_update_flags(cpu.A, value, result, "Z1HC");
+}
+
 void INC_8_reg(opcode_t current_opcode) {
     byte_t target;
     switch (current_opcode) {
@@ -481,6 +500,34 @@ void CP_8_reg(opcode_t current_opcode) {
     word_t new_val = cpu.A - val;
     cpu_update_flags(cpu.A, val, new_val, "Z1HC");
 }
+
+// from https://blog.ollien.com/posts/gb-daa/
+void DAA(opcode_t) {
+    byte_t offset, carry = 0;
+    byte_t value = cpu.A;
+
+    if ((cpu.FN == 0 && (value & 0xF) > 0x09) || cpu.FH) {
+        offset = offset | 0x06;
+    }
+    
+    if ((cpu.FN == 0 && value > 0x99) || cpu.FC) {
+        offset = offset | 0x60;
+        carry = 1;
+    }
+
+    cpu.FC = carry;
+
+    byte_t result;
+    if (cpu.FN) {
+        result = cpu.A - offset;
+    } else {
+        result = cpu.A + offset;
+    }
+
+    cpu.FZ = result == 0 ? 1 : 0;
+    cpu.FH = 0;
+    cpu.A = result;
+}
 /* -------------- */
 
 opcode_handler_t opcodes[0xFF] = {
@@ -500,6 +547,8 @@ opcode_handler_t opcodes[0xFF] = {
     [0x12] = LD_mem_from_A,
     [0x22] = LD_mem_from_A,
     [0x32] = LD_mem_from_A,
+
+    [0x27] = DAA,
 
     [0x03] = INC_16,
     [0x13] = INC_16,
@@ -559,6 +608,10 @@ opcode_handler_t opcodes[0xFF] = {
     [0x80 ... 0x87] = ADD_reg_to_A,
 
     [0x88 ... 0x8F] = ADC_reg_to_A,
+
+    [0x90 ... 0x97] = SUB_reg_from_A,
+    
+    [0x98 ... 0x9F] = SUB_reg_from_A,
 
     [0xC3] = JP_nn,
     [0xC4] = CALL_cond,
