@@ -78,55 +78,39 @@ void cpu_set_reg_by_code(opcode_t code, byte_t value) {
 
 /*
     Universal Cpu Flag register updater.
-    @param byte_t a - first operand
 */
-void cpu_update_flags(byte_t a, byte_t b, byte_t result, char* flag_operations){
-    byte_t flags = cpu.F;
-    
+void cpu_update_flags(byte_t a, byte_t b, word_t result, char* flag_operations){
     // Z flag
     if (flag_operations[0] != '-') {
         if (flag_operations[0] == 'Z') {
-            flags = FLAG_SET_ZERO(result == 0 ? 1 : 0, flags);
-            cpu.Z = result == 0 ? 1 : 0;
+            cpu.FZ = CHECK_ZERO(result) ? 1 : 0;
         } else {
-            byte_t val = flag_operations[0] == '1' ? 1 : 0;
-            flags = FLAG_SET_ZERO(val, flags);
-            cpu.Z = val;
+            cpu.FZ = flag_operations[0] == '1' ? 1 : 0;
         }
     }
 
     // SUB flag (N)
     if (flag_operations[1] != '-') {
-        byte_t val = flag_operations[1] == '1' ? 1 : 0;
-        flags = FLAG_SET_SUB(val, flags);
+        cpu.FN = flag_operations[1] == '1' ? 1 : 0;
     }
 
     // Half-Carry flag
     if (flag_operations[2] != '-') {
         if (flag_operations[2] == 'H') {
-            if (FLAG_ADD_HALF_CARRY(a, b, result)) {
-                flags = FLAG_SET_HALF_CARRY(1, flags);   
-            } else {
-                flags = FLAG_SET_HALF_CARRY(0, flags);   
-            }
+            cpu.FH = CHECK_HALF_CARRY(a, b, result);
         } else {
-            byte_t val = flag_operations[2] == '1' ? 1 : 0;
-            flags = FLAG_SET_HALF_CARRY(val, flags);
+            cpu.FH = flag_operations[2] == '1' ? 1 : 0;
         }
     }
     
-    // Half-Carry flag
-    // TODO: check for 00 - 10 = -10
+    // Carry flag
     if (flag_operations[3] != '-') {
         if (flag_operations[3] == 'C') {
-            flags = FLAG_SET_CARRY(result > 0xFF ? 1 : 0, flags);   
+            cpu.FC = CHECK_UNDERFLOW(result) || CHECK_OVERFLOW(result);   
         } else {
-            byte_t val = flag_operations[3] == '1' ? 1 : 0;
-            flags = FLAG_SET_CARRY(val, flags);
+            cpu.FC = flag_operations[3] == '1' ? 1 : 0;
         }
     }
-
-    cpu.F = flags;
 }
 
 void cpu_push_pc()

@@ -18,9 +18,11 @@ struct CPU cpu = {
         .E = 0xd8,
         .H = 0x01,
         .L = 0x4d,
-        .F = 0xb0,
 
-        .Z = 1,
+        .FZ = 1,
+        .FN = 0,
+        .FH = 1,
+        .FC = 1,
         
         .SP = 0xfffe,
         .PC = 0x0100,
@@ -43,7 +45,7 @@ void cpu_exec(opcode_t opcode, void* mem) {
         cpu.PC++;
         return;
     }
-    printf("PC: 0x%04X, OP: 0x%02X, A: %02X, SP: %04X, C: %02X, D: %02X, Z: %i\n", cpu.PC, opcode, cpu.A, cpu.SP, cpu.C, cpu.D, cpu.Z);
+    printf("PC: 0x%04X, OP: 0x%02X, A: %02X, SP: %04X, C: %02X, D: %02X, Z: %i\n", cpu.PC, opcode, cpu.A, cpu.SP, cpu.C, cpu.D, cpu.FZ);
     // printf("\nCPU-PC: 0x%04X, OP: 0x%02X, A: %02X, B: %02X, C: %02X, D: %02X, Z: %i\n", cpu.PC, opcode, cpu.A, cpu.B, cpu.C, cpu.D, cpu.Z);
     
     if (!opcodes[opcode]) {
@@ -51,10 +53,10 @@ void cpu_exec(opcode_t opcode, void* mem) {
         exit(-1);
     }
 
-    // printf("op: 0x%02x - flag %02x, flags %02x \n", opcode, FLAG_ZERO, cpu.F);
+    // printf("op: 0x%02x - flag %02x, flags %02x \n", opcode, cpu.Z, cpu.F);
     cpu.PC++;
     opcodes[opcode](opcode);
-    // printf("op: 0x%02x - flag %02x, flags %02x \n\n", opcode, FLAG_ZERO, cpu.F);
+    // printf("op: 0x%02x - flag %02x, flags %02x \n\n", opcode, cpu.Z, cpu.F);
 
 }
 
@@ -62,7 +64,6 @@ void cpu_exec(opcode_t opcode, void* mem) {
 /* Control Flow-s */
 void HALT(opcode_t) {
     printf("HALT\n");
-    exit(0);
 }
 void STOP(opcode_t) {
     printf("STOP\n");
@@ -82,13 +83,13 @@ void JR_cond(opcode_t current_opcode) {
     byte_t condition_result = 0;
     switch (current_opcode) {
         case 0x20: // NZ
-            condition_result = !FLAG_ZERO; break;
+            condition_result = !cpu.FZ; break;
         case 0x30: // NC
-            condition_result = !FLAG_CARRY; break;
+            condition_result = !cpu.FC; break;
         case 0x28: // Z
-            condition_result = FLAG_ZERO; break;
+            condition_result = cpu.FZ; break;
         case 0x38: // C
-            condition_result = FLAG_CARRY; break;
+            condition_result = cpu.FC; break;
         default:
             printf("JR_cond: unknown case 0x%02x\n", current_opcode);
             exit(-1);
@@ -114,23 +115,22 @@ void CALL_cond(opcode_t current_opcode) {
     byte_t condition_result = 0;
     switch (current_opcode) {
         case 0xC4: // NZ
-            condition_result = !FLAG_ZERO;
+            condition_result = !cpu.FZ;
             break;
         case 0xD4: // NC
-            condition_result = !FLAG_CARRY;
+            condition_result = !cpu.FC;
             break;
         case 0xCC: // Z
-            condition_result = FLAG_ZERO;
-            // condition_result = cpu.Z;
+            condition_result = cpu.FZ;
             break;
         case 0xDC: // C
-            condition_result = FLAG_CARRY;
+            condition_result = cpu.FC;
             break;
         default:
             printf("CALL_cond: unknown case 0x%02x\n", current_opcode);
             exit(-1);
     }
-    printf("addr to call: %04X, Z %02x, cond: %i\n", addr, FLAG_ZERO, cpu.Z, condition_result);
+    // printf("addr to call: %04X, Z %02x, cond: %i\n", addr, cpu.Z, cpu.Z, condition_result);
 
     if (condition_result) {
         cpu_push_pc();
@@ -149,13 +149,13 @@ void LD_mem_from_A(opcode_t current_opcode) {
         case 0x12:
             addr = cpu_DE(); break;
         case 0x22: {
-            word_t HL;
+            word_t HL = cpu_HL();
             addr = HL;
             cpu_set_HL(HL + 1);
             break;
         }
         case 0x32: {
-            word_t HL;
+            word_t HL = cpu_HL();
             addr = HL;
             cpu_set_HL(HL - 1);
             break;
@@ -300,7 +300,6 @@ void INC_16(opcode_t current_opcode) {
 }
 
 void DEC_16(opcode_t current_opcode) {
-    printf("BC: %04x\n", bytes_to_word(cpu.B, cpu.C));
     switch (last_bit(current_opcode)) {
         case 0x00: {
             word_t value = bytes_to_word(cpu.B, cpu.C);
@@ -327,35 +326,24 @@ void DEC_16(opcode_t current_opcode) {
             printf("DEC_16: unknown case 0x%02x\n", current_opcode);
             exit(-1);
     }
-    printf("BC: %04x\n", bytes_to_word(cpu.B, cpu.C));
 }
 /* -------------- */
 
 /* 8-Bit Arithmetics */
 void ADD_reg_to_A(opcode_t current_opcode) {
     byte_t value = cpu_get_reg_by_code(current_opcode);
-    byte_t result = cpu.A + value;
+    word_t result = cpu.A + value;
+    
+    cpu.A = (byte_t)result;    
     cpu_update_flags(cpu.A, value, result, "Z0HC");
-
-    // should this happen before flags update??
-    if (result > 0xFF) {
-        result = result - 256;
-    }
-
-    cpu.A = result;    
 }
 
 void ADC_reg_to_A(opcode_t current_opcode) {
-    byte_t value = cpu_get_reg_by_code(current_opcode) + FLAG_CARRY;
-    byte_t result = cpu.A + value;
+    byte_t value = cpu_get_reg_by_code(current_opcode);
+    word_t result = cpu.A + value + cpu.FC;
+    
+    cpu.A = (byte_t)result;    
     cpu_update_flags(cpu.A, value, result, "Z0HC");
-
-    // should this happen before flags update??
-    if (result > 0xFF) {
-        result = result - 256;
-    }
-
-    cpu.A = result;    
 }
 
 void INC_8_reg(opcode_t current_opcode) {
@@ -397,6 +385,7 @@ void INC_8_reg(opcode_t current_opcode) {
             printf("INC_8_reg: unknown case 0x%02x\n", current_opcode);
             exit(-1);
     }
+    
     cpu_update_flags(target, 1, target + 1, "Z0H-");
 }
 
@@ -451,6 +440,7 @@ void AND_8_reg(opcode_t current_opcode) {
         val = cpu_get_reg_by_code(current_opcode);
     }
     byte_t new_val = cpu.A & val;
+    cpu.A = new_val;
     cpu_update_flags(cpu.A, val, new_val, "Z010");
 }
 
@@ -463,6 +453,7 @@ void XOR_8_reg(opcode_t current_opcode) {
         val = cpu_get_reg_by_code(current_opcode);
     }
     byte_t new_val = cpu.A ^ val;
+    cpu.A = new_val;
     cpu_update_flags(cpu.A, val, new_val, "Z000");
 }
 
@@ -475,9 +466,21 @@ void OR_8_reg(opcode_t current_opcode) {
         val = cpu_get_reg_by_code(current_opcode);
     }
     byte_t new_val = cpu.A | val;
+    cpu.A = new_val;
     cpu_update_flags(cpu.A, val, new_val, "Z000");
 }
 
+void CP_8_reg(opcode_t current_opcode) {
+    byte_t val;
+    if (current_opcode == 0xFE) {
+        val = mem_read(cpu.PC);
+        cpu.PC++;
+    } else {
+        val = cpu_get_reg_by_code(current_opcode);
+    }
+    word_t new_val = cpu.A - val;
+    cpu_update_flags(cpu.A, val, new_val, "Z1HC");
+}
 /* -------------- */
 
 opcode_handler_t opcodes[0xFF] = {
@@ -565,11 +568,14 @@ opcode_handler_t opcodes[0xFF] = {
     [0xC9] = RET,
 
     [0xA0 ... 0xA7] = AND_8_reg,
-    [0xE6] = AND_8_reg,
+    [0xE6]          = AND_8_reg,
     
     [0xA8 ... 0xAF] = XOR_8_reg,
-    [0xEE] = XOR_8_reg,
+    [0xEE]          = XOR_8_reg,
     
     [0xB0 ... 0xB7] = OR_8_reg,
-    [0xF6] = OR_8_reg,
+    [0xF6]          = OR_8_reg,
+
+    [0xB8 ... 0xBF] = CP_8_reg,
+    [0xFE]          = CP_8_reg,
 };

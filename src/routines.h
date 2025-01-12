@@ -13,16 +13,9 @@
 
 #define CHECK_BIT(bit) (!!((cpu.F) & (1<<(bit))))
 
-#define FLAG_ZERO CHECK_BIT(FLAG_ZERO_BIT)
-#define FLAG_SUB CHECK_BIT(FLAG_SUB_BIT)
-#define FLAG_HALF_CARRY CHECK_BIT(FLAG_HALF_CARRY_BIT)
-#define FLAG_CARRY CHECK_BIT(FLAG_CARRY_BIT)
-#define FLAG_SET(value, flags, bit) ((value) > 0 ? flags | (1 << bit) : flags & ~(1 << bit))
-#define FLAG_SET_ZERO(value, flags) FLAG_SET(value, flags, FLAG_ZERO_BIT)
-#define FLAG_SET_SUB(value, flags) FLAG_SET(value, flags, FLAG_SUB_BIT)
-#define FLAG_SET_HALF_CARRY(value, flags) FLAG_SET(value, flags, FLAG_HALF_CARRY_BIT)
-#define FLAG_SET_CARRY(value, flags) FLAG_SET(value, flags, FLAG_CARRY_BIT)
-#define FLAG_ADD_HALF_CARRY(a, b, result) ((a ^ b ^ result) & 0x10) // TODO: check
-#define FLAG_SUB_HALF_CARRY(a, b, result) ((a ^ (-b) ^ result) & 0x10)
+#define CHECK_ZERO(val) ((val & 0xFF) == 0x00)
+#define CHECK_OVERFLOW(val) (val > 0x00FF)
+#define CHECK_UNDERFLOW(val) ((val & 0xFF00) ? 1 : 0)
+#define CHECK_HALF_CARRY(a, b, result) (((a ^ b ^ result) & 0x10) ? 1 : 0);
 
 #endif

@@ -8,7 +8,10 @@ struct CPU {
     // Prgram Counter
     word_t PC;
 
-    byte_t Z;
+    byte_t FZ;
+    byte_t FN;
+    byte_t FH;
+    byte_t FC; // Carry
 };
 
 // I know that globals are bad :D
