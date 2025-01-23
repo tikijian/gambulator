@@ -101,7 +101,7 @@ void JR_cond(opcode_t current_opcode) {
     }
 
     if (condition_result) {
-        cpu.PC = cpu.PC + (signed char)offset;
+        cpu.PC = cpu.PC + (s_byte_t)offset;
     }
 }
 
@@ -140,7 +140,23 @@ void CALL_cond(opcode_t current_opcode) {
         cpu.PC = addr; // jump
     }
 }
-/* -------------- */
+
+void CALL(opcode_t) {
+    word_t addr = mem_read_word(cpu.PC);
+    cpu.PC = cpu.PC + 2;
+    cpu.SP--;
+    mem_write_byte(cpu.SP, MS_BYTE(cpu.PC));
+    cpu.SP--;
+    mem_write_byte(cpu.SP, LS_BYTE(cpu.PC));
+    
+    cpu.PC = addr;
+}
+
+void JR(opcode_t) {
+    byte_t offset = mem_read(cpu.PC);
+    cpu.PC = cpu.PC + (s_byte_t)offset;
+}
+/* -------------- /
 
 
 /* 16-bit loads */
@@ -269,6 +285,19 @@ void LD_A_from_mem_at_16_reg(opcode_t current_opcode) {
             exit(-1);
     }
     cpu.A = data;
+}
+
+void LD_mem_at_PC_from_A(opcode_t) {
+    word_t target_addr = mem_read_word(cpu.PC);
+    cpu.PC += 2;
+    mem_write_byte(target_addr, cpu.A);
+}
+
+void LDH_mem_from_A(opcodet_t) {
+    byte_t lsb = mem_read(cpu.PC);
+    cpu.PC++;
+    word_t target_addr = bytes_to_word(0xFF, lsb);
+    mem_write_byte(target_addr, cpu.A);
 }
 /* -------------- */
 
@@ -604,6 +633,7 @@ opcode_handler_t opcodes[0xFF] = {
     [0x21] = LD_16reg_from_mem,
     [0x31] = LD_16reg_from_mem,
 
+    [0x18] = JR,
     [0x20] = JR_cond,
     [0x30] = JR_cond,
     [0x28] = JR_cond,
@@ -672,6 +702,9 @@ opcode_handler_t opcodes[0xFF] = {
     [0x76] = HALT,
     [0x77] = LD_mem_from_reg,
 
+    [0xE0] = LDH_mem_from_A,
+    [0xEA] = LD_mem_at_PC_from_A,
+
     [0x80 ... 0x87] = ADD_reg_to_A,
 
     [0x88 ... 0x8F] = ADC_reg_to_A,
@@ -684,6 +717,7 @@ opcode_handler_t opcodes[0xFF] = {
     [0xC4] = CALL_cond,
     [0xD4] = CALL_cond,
     [0xCC] = CALL_cond,
+    [0xCD] = CALL,
     [0xD4] = CALL_cond,
     [0xC9] = RET,
 
