@@ -16,3 +16,7 @@ void   cpu_set_reg_by_code(opcode_t code, byte_t value);
 void cpu_update_flags(byte_t a, byte_t b, word_t result, char* flags_operations);
 
 void cpu_push_pc();
+
+void log_cpu_full(opcode_t opcode);
+
+void log_cpu_full_16(opcode_t opcode);

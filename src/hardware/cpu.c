@@ -26,13 +26,15 @@ struct CPU cpu = {
         
         .SP = 0xfffe,
         .PC = 0x0100,
+
+        .IME = 0,
 };
 
 void cpu_exec(opcode_t opcode, void* mem) {
     if (opcode == OPCODE_PREFIX) {
         // read next instruction after prefix-opcode
         // TODO: check if should rewrite opcode variable or make new
-        printf("Prefix Opcode! ");
+        printf("Prefix Opcode!\n");
         cpu.PC++;
         opcode = mem_read(cpu.PC);
         // execute prefixed opcode
@@ -48,7 +50,8 @@ void cpu_exec(opcode_t opcode, void* mem) {
         cpu.PC++;
         return;
     }
-    printf("PC: 0x%04X, OP: 0x%02X, A: %02X, SP: %04X, C: %02X, D: %02X, Z: %i\n", cpu.PC, opcode, cpu.A, cpu.SP, cpu.C, cpu.D, cpu.FZ);
+    log_cpu_full_16(opcode);
+    // printf("PC: 0x%04X, OP: 0x%02X, A: %02X, SP: %04X, C: %02X, D: %02X, Z: %i\n", cpu.PC, opcode, cpu.A, cpu.SP, cpu.C, cpu.D, cpu.FZ);
     // printf("\nCPU-PC: 0x%04X, OP: 0x%02X, A: %02X, B: %02X, C: %02X, D: %02X, Z: %i\n", cpu.PC, opcode, cpu.A, cpu.B, cpu.C, cpu.D, cpu.Z);
     
     if (!opcodes[opcode]) {
@@ -79,8 +82,7 @@ void JP_nn(opcode_t) {
 }
 
 void JR_cond(opcode_t current_opcode) {
-    // check: signed8(offset)
-    word_t offset = mem_read_word(cpu.PC);
+    byte_t offset = mem_read(cpu.PC);
     cpu.PC++;
 
     byte_t condition_result = 0;
@@ -99,15 +101,13 @@ void JR_cond(opcode_t current_opcode) {
     }
 
     if (condition_result) {
-        cpu.PC += offset;
+        cpu.PC = cpu.PC + (signed char)offset;
     }
 }
 
 void RET(opcode_t) {
-    // printf("reading mem from SP: %04X\n", cpu.SP);
     byte_t lsb = mem_read(cpu.SP); cpu.SP++;
     byte_t msb = mem_read(cpu.SP); cpu.SP++;
-    // printf("mem is %02X %02x - %04X\n", msb, lsb, bytes_to_word(msb, lsb));
     cpu.PC = bytes_to_word(msb, lsb);
 }
 
@@ -585,6 +585,16 @@ void POP(opcode_t current_opcode) {
 }
 /* -------------- */
 
+/* Misc */
+void DI(opcode_t) {
+    cpu.IME = 0;
+}
+
+// TODO: Schedules interrupt handling to be enabled after the next machine cycle.
+void EI(opcode_t) {
+    cpu.IME = 1;
+}
+/* -------------- */
 
 opcode_handler_t opcodes[0xFF] = {
     [0x10] = STOP,
@@ -651,6 +661,7 @@ opcode_handler_t opcodes[0xFF] = {
     [0x3A] = LD_A_from_mem_at_16_reg,
 
     [0x40 ... 0x6F] = LD_8reg_to_reg,
+    [0x78 ... 0x7F] = LD_8reg_to_reg,
 
     [0x70] = LD_mem_from_reg,
     [0x71] = LD_mem_from_reg,
@@ -692,6 +703,9 @@ opcode_handler_t opcodes[0xFF] = {
     [0xD1] = POP,
     [0xE1] = POP,
     [0xF1] = POP,
+
+    [0xF3] = DI,
+    [0xFB] = EI,
 
     [0xC5] = PUSH,
     [0xD5] = PUSH,

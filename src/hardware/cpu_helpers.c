@@ -78,6 +78,12 @@ void cpu_set_reg_by_code(opcode_t code, byte_t value) {
         case 0x68 ... 0x6F:
             cpu.L = value;
             return;
+        case 0x78 ... 0x7F:
+            cpu.A = value;
+            return;
+        default:
+            printf("cpu_set_reg_by_code: unknown case 0x%02x\n", code);
+            exit(-1);
     }
 }
 
@@ -137,4 +143,12 @@ void cpu_push_pc()
     mem_write_byte(cpu.SP, MS_BYTE(cpu.PC));
     cpu.SP--;
     mem_write_byte(cpu.SP, LS_BYTE(cpu.PC));
+}
+
+void log_cpu_full(opcode_t opcode) {
+    printf("PC: 0x%04X, OP: 0x%02X, SP: %04X, A: %02X, B: %02X, C: %02X, D: %02X, E: %02X, H: %02X, L: %02X, Z: %i\n", cpu.PC, opcode, cpu.SP, cpu.A, cpu.B, cpu.C, cpu.D, cpu.E, cpu.H, cpu.L, cpu.FZ);
+}
+
+void log_cpu_full_16(opcode_t opcode) {
+    printf("PC: 0x%04X, OP: %02X, SP: %04X, AF: %04X, BC: %04X, DE: %04X, HL: %04X, Z: %i\n", cpu.PC, opcode, cpu.SP, cpu_AF(), cpu_BC(), cpu_DE(), cpu_HL(), cpu.FZ);
 }

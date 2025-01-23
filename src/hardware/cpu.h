@@ -12,6 +12,8 @@ struct CPU {
     byte_t FN;
     byte_t FH;
     byte_t FC; // Carry
+
+    byte_t IME;
 };
 
 // I know that globals are bad :D
