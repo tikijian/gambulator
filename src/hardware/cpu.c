@@ -160,6 +160,12 @@ void JR(opcode_t) {
 
 
 /* 16-bit loads */
+void LD_A_from_mem(opcode_t) {
+    word_t target_addr = mem_read_word(cpu.PC);
+    cpu.PC += 2;
+    cpu.A = mem_read(target_addr);
+}
+
 void LD_mem_from_A(opcode_t current_opcode) {
     word_t addr;
     switch (current_opcode) {
@@ -298,6 +304,13 @@ void LDH_mem_from_A(opcodet_t) {
     cpu.PC++;
     word_t target_addr = bytes_to_word(0xFF, lsb);
     mem_write_byte(target_addr, cpu.A);
+}
+
+void LDH_A_from_mem(opcode_t) {
+    byte_t target_addr_lsb = mem_read(cpu.PC);
+    cpu.PC++;
+    word_t target_addr = bytes_to_word(0xFF, target_addr_lsb);
+    cpu.A = mem_read(target_addr);
 }
 /* -------------- */
 
@@ -703,7 +716,9 @@ opcode_handler_t opcodes[0xFF] = {
     [0x77] = LD_mem_from_reg,
 
     [0xE0] = LDH_mem_from_A,
+    [0xF0] = LDH_A_from_mem,
     [0xEA] = LD_mem_at_PC_from_A,
+    [0xFA] = LD_A_from_mem,
 
     [0x80 ... 0x87] = ADD_reg_to_A,
 
