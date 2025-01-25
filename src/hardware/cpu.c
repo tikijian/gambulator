@@ -9,6 +9,7 @@
 
 
 opcode_handler_t opcodes[0xFF];
+opcode_handler_t prefixed_opcodes[0xFF];
 
 struct CPU cpu = {
         .A = 0x01,
@@ -33,13 +34,16 @@ struct CPU cpu = {
 void cpu_exec(opcode_t opcode, void* mem) {
     if (opcode == OPCODE_PREFIX) {
         // read next instruction after prefix-opcode
-        // TODO: check if should rewrite opcode variable or make new
-        printf("Prefix Opcode!\n");
         cpu.PC++;
         opcode = mem_read(cpu.PC);
-        // execute prefixed opcode
-        // cpu.PC++
-        exit(-1);
+        if (!prefixed_opcodes[opcode]) {
+            printf("CPU: Unknown prefixed OP-code: 0x%02X at 0x%04X\n", opcode, cpu.PC);
+            exit(-1);
+        }
+
+        cpu.PC++;
+        prefixed_opcodes[opcode](opcode);
+        return;
     }
 
     // printf("CPU-PC: 0x%04X, OP: 0x%02X\n", cpu.PC, opcode);
@@ -106,9 +110,33 @@ void JR_cond(opcode_t current_opcode) {
 }
 
 void RET(opcode_t) {
-    byte_t lsb = mem_read(cpu.SP); cpu.SP++;
-    byte_t msb = mem_read(cpu.SP); cpu.SP++;
-    cpu.PC = bytes_to_word(msb, lsb);
+    cpu.PC = cpu_stack_pop();
+}
+
+void RET_cond(opcode_t current_opcode) {
+    byte_t condition_result = 0;
+    switch (current_opcode) {
+        case 0xC0: // NZ
+            condition_result = !cpu.FZ;
+            break;
+        case 0xD0: // NC
+            condition_result = !cpu.FC;
+            break;
+        case 0xC8: // Z
+            condition_result = cpu.FZ;
+            break;
+        case 0xD8: // C
+            condition_result = cpu.FC;
+            break;
+        default:
+            printf("CALL_cond: unknown case 0x%02x\n", current_opcode);
+            exit(-1);
+    }
+    // printf("addr to call: %04X, Z %02x, cond: %i\n", addr, cpu.Z, cpu.Z, condition_result);
+
+    if (condition_result) {
+        cpu.PC = cpu_stack_pop();
+    }
 }
 
 void CALL_cond(opcode_t current_opcode) {
@@ -299,7 +327,7 @@ void LD_mem_at_PC_from_A(opcode_t) {
     mem_write_byte(target_addr, cpu.A);
 }
 
-void LDH_mem_from_A(opcodet_t) {
+void LDH_mem_from_A(opcode_t) {
     byte_t lsb = mem_read(cpu.PC);
     cpu.PC++;
     word_t target_addr = bytes_to_word(0xFF, lsb);
@@ -728,6 +756,10 @@ opcode_handler_t opcodes[0xFF] = {
     
     [0x98 ... 0x9F] = SUB_reg_from_A,
 
+    [0xC0] = RET_cond,
+    [0xD0] = RET_cond,
+    [0xC8] = RET_cond,
+    [0xD8] = RET_cond,
     [0xC3] = JP_nn,
     [0xC4] = CALL_cond,
     [0xD4] = CALL_cond,
@@ -760,4 +792,10 @@ opcode_handler_t opcodes[0xFF] = {
     [0xD5] = PUSH,
     [0xE5] = PUSH,
     [0xF5] = PUSH,
+
+    [0xC6] = ADD_reg_to_A,
+};
+
+opcode_handler_t prefixed_opcodes[0xFF] = {
+
 };
