@@ -37,6 +37,14 @@ void cpu_set_HL(word_t value) {
 }
 
 byte_t cpu_get_reg_by_code(opcode_t code) {
+    switch(code) {
+        case 0xC6: case 0xD6: case 0xE6: case 0xF6:
+        case 0xCE: case 0xDE: case 0xEE: case 0xFE:
+            byte_t value = mem_read(cpu.PC);
+            cpu.PC++;
+            return value;
+    }
+
     switch (first_bit(code))
     {
         case 0x0: return cpu.B;
@@ -143,6 +151,15 @@ void cpu_push_pc()
     mem_write_byte(cpu.SP, MS_BYTE(cpu.PC));
     cpu.SP--;
     mem_write_byte(cpu.SP, LS_BYTE(cpu.PC));
+}
+
+word_t cpu_stack_pop()
+{
+    byte_t lsb = mem_read(cpu.SP);
+    cpu.SP++;
+    byte_t msb = mem_read(cpu.SP);
+    cpu.SP++;
+    return bytes_to_word(msb, lsb);
 }
 
 void log_cpu_full(opcode_t opcode) {
