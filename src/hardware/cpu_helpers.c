@@ -64,6 +64,8 @@ byte_t cpu_get_reg_by_code(opcode_t code) {
         case 0xE: return mem_read(cpu_HL());
         case 0xF: return cpu.A;
     }
+    printf("cpu_get_reg_by_code: unknown case 0x%02x\n", code);
+    exit(-1);
 }
 
 void cpu_set_reg_by_code(opcode_t code, byte_t value) {
@@ -168,4 +170,47 @@ void log_cpu_full(opcode_t opcode) {
 
 void log_cpu_full_16(opcode_t opcode) {
     printf("PC: 0x%04X, OP: %02X, SP: %04X, AF: %04X, BC: %04X, DE: %04X, HL: %04X, Z: %i\n", cpu.PC, opcode, cpu.SP, cpu_AF(), cpu_BC(), cpu_DE(), cpu_HL(), cpu.FZ);
+}
+
+// Shift right into Carry
+byte_t SRL(byte_t target) {
+
+}
+
+void cpu_exec_CB_opcode(opcode_t opcode) {
+    byte_t val = NULL;
+    switch (first_bit(opcode))
+    {
+        case 0x0:
+        case 0x8:
+            val = cpu.B; break;
+        case 0x1:
+        case 0x9:
+            val = cpu.C; break;
+        case 0x2:
+        case 0xA:
+            val = cpu.D; break;
+        case 0x3:
+        case 0xB:
+            val = cpu.E; break;
+        case 0x4:
+        case 0xC:
+            val = cpu.H; break;
+        case 0x5:
+        case 0xD:
+            val = cpu.L; break;
+        case 0x6:
+        case 0xE:
+            val = mem_read(cpu_HL()); break;
+        case 0x7:
+        case 0xF:
+            val = cpu.A; break;
+        default:
+            printf("exec_CB_opcde get target value: unknown case 0x%02x\n", opcode);
+            exit(-1);
+    }
+
+    printf("exec_CB_opcde unknown operation: 0x%02x\n", opcode);
+    exit(-1);
+
 }

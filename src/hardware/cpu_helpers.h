@@ -17,6 +17,8 @@ void cpu_update_flags(byte_t a, byte_t b, word_t result, char* flags_operations)
 
 void cpu_push_pc();
 
+void cpu_exec_CB_opcode(opcode_t opcode);
+
 word_t cpu_stack_pop();
 
 void log_cpu_full(opcode_t opcode);

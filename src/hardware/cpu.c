@@ -9,7 +9,6 @@
 
 
 opcode_handler_t opcodes[0xFF];
-opcode_handler_t prefixed_opcodes[0xFF];
 
 struct CPU cpu = {
         .A = 0x01,
@@ -36,13 +35,9 @@ void cpu_exec(opcode_t opcode, void* mem) {
         // read next instruction after prefix-opcode
         cpu.PC++;
         opcode = mem_read(cpu.PC);
-        if (!prefixed_opcodes[opcode]) {
-            printf("CPU: Unknown prefixed OP-code: 0x%02X at 0x%04X\n", opcode, cpu.PC);
-            exit(-1);
-        }
-
         cpu.PC++;
-        prefixed_opcodes[opcode](opcode);
+
+        cpu_exec_CB_opcode(opcode);
         return;
     }
 
@@ -521,52 +516,28 @@ void DEC_8_reg(opcode_t current_opcode) {
 }
 
 void AND_8_reg(opcode_t current_opcode) {
-    byte_t val;
-    if (current_opcode == 0xE6) {
-        val = mem_read(cpu.PC);
-        cpu.PC++;
-    } else {
-        val = cpu_get_reg_by_code(current_opcode);
-    }
+    byte_t val = cpu_get_reg_by_code(current_opcode);
     byte_t new_val = cpu.A & val;
     cpu.A = new_val;
     cpu_update_flags(cpu.A, val, new_val, "Z010");
 }
 
 void XOR_8_reg(opcode_t current_opcode) {
-    byte_t val;
-    if (current_opcode == 0xEE) {
-        val = mem_read(cpu.PC);
-        cpu.PC++;
-    } else {
-        val = cpu_get_reg_by_code(current_opcode);
-    }
+    byte_t val = cpu_get_reg_by_code(current_opcode);
     byte_t new_val = cpu.A ^ val;
     cpu.A = new_val;
     cpu_update_flags(cpu.A, val, new_val, "Z000");
 }
 
 void OR_8_reg(opcode_t current_opcode) {
-    byte_t val;
-    if (current_opcode == 0xF6) {
-        val = mem_read(cpu.PC);
-        cpu.PC++;
-    } else {
-        val = cpu_get_reg_by_code(current_opcode);
-    }
+    byte_t val = cpu_get_reg_by_code(current_opcode);
     byte_t new_val = cpu.A | val;
     cpu.A = new_val;
     cpu_update_flags(cpu.A, val, new_val, "Z000");
 }
 
 void CP_8_reg(opcode_t current_opcode) {
-    byte_t val;
-    if (current_opcode == 0xFE) {
-        val = mem_read(cpu.PC);
-        cpu.PC++;
-    } else {
-        val = cpu_get_reg_by_code(current_opcode);
-    }
+    byte_t val = val = cpu_get_reg_by_code(current_opcode);
     word_t new_val = cpu.A - val;
     cpu_update_flags(cpu.A, val, new_val, "Z1HC");
 }
@@ -794,8 +765,12 @@ opcode_handler_t opcodes[0xFF] = {
     [0xF5] = PUSH,
 
     [0xC6] = ADD_reg_to_A,
-};
+    [0xD6] = SUB_reg_from_A,
+    [0xE6] = AND_8_reg,
+    [0xF6] = OR_8_reg,
 
-opcode_handler_t prefixed_opcodes[0xFF] = {
-
+    [0xCE] = ADC_reg_to_A,
+    [0xDE] = SBC_reg_from_A,
+    [0xEE] = XOR_8_reg,
+    [0xFE] = CP_8_reg,
 };
