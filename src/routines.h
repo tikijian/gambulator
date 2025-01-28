@@ -17,5 +17,10 @@
 #define CHECK_OVERFLOW(val) (val > 0x00FF)
 #define CHECK_UNDERFLOW(val) ((val & 0xFF00) ? 1 : 0)
 #define CHECK_HALF_CARRY(a, b, result) (((a ^ b ^ result) & 0x10) ? 1 : 0);
+#define CHECK_HALF_CARRY_WORD(a, b, result) (((result ^ a ^ b) & 0x1000) ? 1 : 0);
 
+#define R_ROTATE(val) ((val >> 1) | (val << 7))
+#define L_ROTATE(val) ((val << 1) | (val >> 7))
+
+#define R_ROTATE_THROUGH_CARRY(val) ((val >> 1) | (cpu.FC << 7))
 #endif

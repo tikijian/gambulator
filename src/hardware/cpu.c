@@ -179,6 +179,10 @@ void JR(opcode_t) {
     byte_t offset = mem_read(cpu.PC);
     cpu.PC = cpu.PC + (s_byte_t)offset;
 }
+
+void JP_HL(opcode_t) {
+    cpu.PC = cpu_HL();
+}
 /* -------------- /
 
 
@@ -240,6 +244,10 @@ void LD_16reg_from_mem(opcode_t current_opcode) {
             printf("LD_16reg_from_mem: unknown case 0x%02x\n", current_opcode);
             exit(-1);
     }
+}
+
+void LD_SP_HL(opcode_t) {
+    cpu.SP = cpu_HL();
 }
 /* -------------- */
 
@@ -395,6 +403,31 @@ void DEC_16(opcode_t current_opcode) {
             exit(-1);
     }
 }
+
+void ADD_16reg_to_HL(opcode_t current_opcode) {
+    word_t hl = cpu_HL();
+    word_t target;
+    switch (last_bit(current_opcode)) {
+        case 0x00:
+            target = cpu_BC; break;
+        case 0x10:
+            target = cpu_DE; break;
+        case 0x20:
+            target = hl; break;
+        case 0x30:
+            target = cpu.SP; break;
+        default:
+            printf("DEC_16: unknown case 0x%02x\n", current_opcode);
+            exit(-1);
+    }
+
+    unsigned int result = hl + target;
+    cpu.FH = CHECK_HALF_CARRY_WORD(hl, target, result);
+    cpu.FC = result > 0xFFFF;
+    cpu.FN = 0;
+    cpu_set_HL((word_t)result);
+}
+
 /* -------------- */
 
 /* 8-Bit Arithmetics */
@@ -569,6 +602,18 @@ void DAA(opcode_t) {
     cpu.FH = 0;
     cpu.A = result;
 }
+
+void RRCA(opcode_t) {
+    cpu.FZ = cpu.FH = cpu.FN = 0;
+    cpu.FC = cpu.A & 0x1;
+    cpu.A = R_ROTATE(cpu.A);
+}
+
+void RRA(opcode_t) {
+    cpu.FZ = cpu.FH = cpu.FN = 0;
+    cpu.FC = cpu.A & 0x1;
+    cpu.A = R_ROTATE_THROUGH_CARRY(cpu.A);
+}
 /* -------------- */
 
 /* Stack operations */
@@ -640,6 +685,9 @@ void EI(opcode_t) {
 opcode_handler_t opcodes[0xFF] = {
     [0x10] = STOP,
 
+    [0x0F] = RRCA,
+    [0x1F] = RRA,
+
     [0x01] = LD_16reg_from_mem,
     [0x11] = LD_16reg_from_mem,
     [0x21] = LD_16reg_from_mem,
@@ -667,6 +715,11 @@ opcode_handler_t opcodes[0xFF] = {
     [0x1b] = DEC_16,
     [0x2b] = DEC_16,
     [0x3b] = DEC_16,
+
+    [0x09] = ADD_16reg_to_HL,
+    [0x19] = ADD_16reg_to_HL,
+    [0x29] = ADD_16reg_to_HL,
+    [0x39] = ADD_16reg_to_HL,
 
     [0x04] = INC_8_reg,
     [0x14] = INC_8_reg,
@@ -738,6 +791,9 @@ opcode_handler_t opcodes[0xFF] = {
     [0xCD] = CALL,
     [0xD4] = CALL_cond,
     [0xC9] = RET,
+    [0xE9] = JP_HL,
+
+    [0xF9] = LD_SP_HL,
 
     [0xA0 ... 0xA7] = AND_8_reg,
     [0xE6]          = AND_8_reg,

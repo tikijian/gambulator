@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 #include "../types.h"
 #include "../routines.h"
@@ -172,13 +173,31 @@ void log_cpu_full_16(opcode_t opcode) {
     printf("PC: 0x%04X, OP: %02X, SP: %04X, AF: %04X, BC: %04X, DE: %04X, HL: %04X, Z: %i\n", cpu.PC, opcode, cpu.SP, cpu_AF(), cpu_BC(), cpu_DE(), cpu_HL(), cpu.FZ);
 }
 
+/*
+    CB-prefixed Opcodes and helpers
+*/
+
+// Rotate right through Carry
+byte_t RR(byte_t target) {
+    byte_t result = R_ROTATE_THROUGH_CARRY(target);
+    cpu.FZ = result == 0;
+    cpu.FC = target & 0x01;
+    cpu.FH = cpu.FN = 0;
+    return result;
+}
+
 // Shift right into Carry
 byte_t SRL(byte_t target) {
-
+    byte_t result = target >> 1;
+    cpu.FZ = result == 0;
+    cpu.FC = target & 0x01;
+    cpu.FH = cpu.FN = 0;
+    return result;
 }
 
 void cpu_exec_CB_opcode(opcode_t opcode) {
-    byte_t val = NULL;
+    byte_t val;
+    byte_t should_update = 1;
     switch (first_bit(opcode))
     {
         case 0x0:
@@ -210,7 +229,49 @@ void cpu_exec_CB_opcode(opcode_t opcode) {
             exit(-1);
     }
 
-    printf("exec_CB_opcde unknown operation: 0x%02x\n", opcode);
-    exit(-1);
+    byte_t result;
+    switch(opcode) {
+        case 0x18 ... 0x1F:
+            result = RR(val); break;
+        case 0x38 ... 0x3F:
+            result = SRL(val); break;
+        default:
+            printf("exec_CB_opcde unknown operation: 0x%02x\n", opcode);
+            exit(-1);
+    }
 
+    if (!should_update) {
+        return;
+    }
+
+    switch (first_bit(opcode))
+    {
+        case 0x0:
+        case 0x8:
+            cpu.B = result; break;
+        case 0x1:
+        case 0x9:
+            cpu.C = result; break;
+        case 0x2:
+        case 0xA:
+            cpu.D = result; break;
+        case 0x3:
+        case 0xB:
+            cpu.E = result; break;
+        case 0x4:
+        case 0xC:
+            cpu.H = result; break;
+        case 0x5:
+        case 0xD:
+            cpu.L = result; break;
+        case 0x6:
+        case 0xE:
+            mem_write_byte(cpu_HL(), result); break;
+        case 0x7:
+        case 0xF:
+            cpu.A = result; break;
+        default:
+            printf("exec_CB_opcde get target value: unknown case 0x%02x\n", opcode);
+            exit(-1);
+    }
 }
