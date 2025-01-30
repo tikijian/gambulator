@@ -409,9 +409,9 @@ void ADD_16reg_to_HL(opcode_t current_opcode) {
     word_t target;
     switch (last_bit(current_opcode)) {
         case 0x00:
-            target = cpu_BC; break;
+            target = cpu_BC(); break;
         case 0x10:
-            target = cpu_DE; break;
+            target = cpu_DE(); break;
         case 0x20:
             target = hl; break;
         case 0x30:
