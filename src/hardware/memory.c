@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "../types.h"
 #include "../constants.h"
@@ -10,12 +11,16 @@ byte_t* mem;
 
 void*
 mem_init() {
-    mem = calloc(MEM_TOTAL, sizeof(byte_t));
+    mem = calloc(MEM_TOTAL + 1, sizeof(byte_t));
     return (byte_t*)mem;
 }
 
 byte_t
 mem_read(word_t address) {
+    if (address > 0xFFFF) {
+        printf("MEM: unable to read address 0x%04X\n", address);
+        exit(-1);
+    }
     return mem[address];
 }
 

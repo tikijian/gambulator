@@ -8,7 +8,7 @@
 #include "cpu_helpers.h"
 
 
-opcode_handler_t opcodes[0xFF];
+opcode_handler_t opcodes[256];
 
 struct CPU cpu = {
         .A = 0x01,
@@ -80,6 +80,35 @@ void JP_nn(opcode_t) {
     printf("jumping to %04x\n", cpu.PC);
 }
 
+void JP_cond(opcode_t current_opcode) {
+    word_t addr = mem_read_word(cpu.PC);
+    cpu.PC = cpu.PC + 2;
+
+    byte_t condition_result = 0;
+    switch (current_opcode) {
+        case 0xC2: // NZ
+            condition_result = !cpu.FZ;
+            break;
+        case 0xD2: // NC
+            condition_result = !cpu.FC;
+            break;
+        case 0xCA: // Z
+            condition_result = cpu.FZ;
+            break;
+        case 0xDA: // C
+            condition_result = cpu.FC;
+            break;
+        default:
+            printf("CALL_cond: unknown case 0x%02x\n", current_opcode);
+            exit(-1);
+    }
+
+    if (condition_result) {
+        printf("jumping to %04X\n", addr);
+        cpu.PC = addr; // jump
+    }
+}
+
 void JR_cond(opcode_t current_opcode) {
     byte_t offset = mem_read(cpu.PC);
     cpu.PC++;
@@ -108,6 +137,11 @@ void RET(opcode_t) {
     cpu.PC = cpu_stack_pop();
 }
 
+void RET_I(opcode_t) {
+    RET(0);
+    cpu.IME = 1;
+}
+
 void RET_cond(opcode_t current_opcode) {
     byte_t condition_result = 0;
     switch (current_opcode) {
@@ -127,11 +161,37 @@ void RET_cond(opcode_t current_opcode) {
             printf("CALL_cond: unknown case 0x%02x\n", current_opcode);
             exit(-1);
     }
-    // printf("addr to call: %04X, Z %02x, cond: %i\n", addr, cpu.Z, cpu.Z, condition_result);
 
     if (condition_result) {
         cpu.PC = cpu_stack_pop();
     }
+}
+
+void RST(opcode_t current_opcode) {
+    byte_t addr;
+    switch (current_opcode) {
+        case 0xC7:
+            addr = 0x00; break;
+        case 0xD7:
+            addr = 0x10; break;
+        case 0xE7:
+            addr = 0x20; break;
+        case 0xF7:
+            addr = 0x30; break;
+        case 0xCF:
+            addr = 0x08; break;
+        case 0xDF:
+            addr = 0x18; break;
+        case 0xEF:
+            addr = 0x28; break;
+        case 0xFF:
+            addr = 0x38; break;
+        default:
+            printf("RST: unknown case 0x%02x\n", current_opcode);
+            exit(-1);
+    }
+    cpu_push_pc();
+    cpu.PC = bytes_to_word(0x00, addr);
 }
 
 void CALL_cond(opcode_t current_opcode) {
@@ -177,6 +237,7 @@ void CALL(opcode_t) {
 
 void JR(opcode_t) {
     byte_t offset = mem_read(cpu.PC);
+    cpu.PC++;
     cpu.PC = cpu.PC + (s_byte_t)offset;
 }
 
@@ -682,7 +743,7 @@ void EI(opcode_t) {
 }
 /* -------------- */
 
-opcode_handler_t opcodes[0xFF] = {
+opcode_handler_t opcodes[256] = {
     [0x10] = STOP,
 
     [0x0F] = RRCA,
@@ -692,12 +753,6 @@ opcode_handler_t opcodes[0xFF] = {
     [0x11] = LD_16reg_from_mem,
     [0x21] = LD_16reg_from_mem,
     [0x31] = LD_16reg_from_mem,
-
-    [0x18] = JR,
-    [0x20] = JR_cond,
-    [0x30] = JR_cond,
-    [0x28] = JR_cond,
-    [0x38] = JR_cond,
 
     [0x02] = LD_mem_from_A,
     [0x12] = LD_mem_from_A,
@@ -780,17 +835,41 @@ opcode_handler_t opcodes[0xFF] = {
     
     [0x98 ... 0x9F] = SUB_reg_from_A,
 
+    [0x18] = JR,
+    [0x20] = JR_cond,
+    [0x30] = JR_cond,
+    [0x28] = JR_cond,
+    [0x38] = JR_cond,
+
     [0xC0] = RET_cond,
     [0xD0] = RET_cond,
     [0xC8] = RET_cond,
     [0xD8] = RET_cond,
+
+    [0xC7] = RST,
+    [0xD7] = RST,
+    [0xE7] = RST,
+    [0xF7] = RST,
+    [0xCF] = RST,
+    [0xDF] = RST,
+    [0xEF] = RST,
+    [0xFF] = RST,
+
+    [0xC2] = JP_cond,
+    [0xD2] = JP_cond,
+    [0xCA] = JP_cond,
+    [0xDA] = JP_cond,
+
     [0xC3] = JP_nn,
+
     [0xC4] = CALL_cond,
     [0xD4] = CALL_cond,
     [0xCC] = CALL_cond,
+    [0xDC] = CALL_cond,
+
     [0xCD] = CALL,
-    [0xD4] = CALL_cond,
     [0xC9] = RET,
+    [0xD9] = RET_I,
     [0xE9] = JP_HL,
 
     [0xF9] = LD_SP_HL,

@@ -195,6 +195,13 @@ byte_t SRL(byte_t target) {
     return result;
 }
 
+byte_t SWAP(byte_t target) {
+    byte_t result = LS_BYTE(target) | MS_BYTE(target);
+    cpu.FZ = result == 0;
+    cpu.FC = cpu.FH = cpu.FN = 0;
+    return result;
+}
+
 void cpu_exec_CB_opcode(opcode_t opcode) {
     byte_t val;
     byte_t should_update = 1;
@@ -233,6 +240,8 @@ void cpu_exec_CB_opcode(opcode_t opcode) {
     switch(opcode) {
         case 0x18 ... 0x1F:
             result = RR(val); break;
+        case 0x30 ... 0x37:
+            result = SWAP(val); break;
         case 0x38 ... 0x3F:
             result = SRL(val); break;
         default:
