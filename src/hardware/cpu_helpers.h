@@ -1,5 +1,8 @@
 #include "../types.h"
 
+#ifndef _CPU_HELPERS_H
+# define _CPU_HELPERS_H
+
 byte_t cpu_F();
 word_t cpu_AF();
 word_t cpu_HL();
@@ -24,3 +27,5 @@ word_t cpu_stack_pop();
 void log_cpu_full(opcode_t opcode);
 
 void log_cpu_full_16(opcode_t opcode);
+
+#endif

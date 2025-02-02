@@ -32,6 +32,10 @@ mem_free()
 
 void mem_write_byte(word_t address, byte_t value)
 {
+    if (address > 0xFFFF) {
+        printf("MEM: unable to write at address 0x%04X\n", address);
+        exit(-1);
+    }
     mem[address] = value;
 }
 

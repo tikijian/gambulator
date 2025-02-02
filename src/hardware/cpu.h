@@ -1,5 +1,8 @@
 #include "../types.h"
 
+#ifndef _CPU_H
+# define _CPU_H
+
 // main CPU struct
 struct CPU {
     byte_t A, B, C, D, E, H, L, F;
@@ -11,7 +14,7 @@ struct CPU {
     byte_t FZ;
     byte_t FN;
     byte_t FH;
-    byte_t FC; // Carry
+    byte_t FC;
 
     byte_t IME;
 };
@@ -20,3 +23,5 @@ struct CPU {
 extern struct CPU cpu;
 
 void cpu_exec(opcode_t, void* memory);
+
+#endif

@@ -1,3 +1,6 @@
+#ifndef TYPES_H
+# define TYPES_H
+
 // size of 0xFF
 typedef signed char s_byte_t;
 typedef unsigned char byte_t;
@@ -7,3 +10,5 @@ typedef unsigned short word_t;
 
 // pointer to opcode execution function
 typedef void (*opcode_handler_t)(opcode_t);
+
+#endif
