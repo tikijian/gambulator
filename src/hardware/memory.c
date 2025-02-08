@@ -10,9 +10,7 @@ byte_t* memory = NULL;
 
 void*
 mem_init() {
-    printf("mem addr is (at memory.c) %p\n", memory);
     memory = calloc(MEM_TOTAL + 1, sizeof(byte_t));
-    printf("mem addr is (at memory.c after allocation) %p\n", memory);
     return (byte_t*)memory;
 }
 

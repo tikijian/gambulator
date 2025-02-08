@@ -16,5 +16,8 @@
 #define REG_TIMA 0xFF05
 #define REG_TMA 0xFF06
 #define REG_TAC 0xFF07
+    #define REG_TAC_ENABLE_BIT 2
+    #define REG_TAC_CLOCK_BIT_MASK 0b00000011
+
 
 #endif
