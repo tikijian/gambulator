@@ -15,6 +15,7 @@ set(SOURCE_FILES
     src/hardware/cpu.c
     src/hardware/memory.c
     src/hardware/cpu_helpers.c
+    src/hardware/timer.c
     src/main.c
 )
 

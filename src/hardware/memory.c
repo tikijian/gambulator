@@ -6,13 +6,14 @@
 #include "../routines.h"
 #include "memory.h"
 
-
-byte_t* mem;
+byte_t* memory = NULL;
 
 void*
 mem_init() {
-    mem = calloc(MEM_TOTAL + 1, sizeof(byte_t));
-    return (byte_t*)mem;
+    printf("mem addr is (at memory.c) %p\n", memory);
+    memory = calloc(MEM_TOTAL + 1, sizeof(byte_t));
+    printf("mem addr is (at memory.c after allocation) %p\n", memory);
+    return (byte_t*)memory;
 }
 
 byte_t
@@ -21,13 +22,13 @@ mem_read(word_t address) {
         printf("MEM: unable to read address 0x%04X\n", address);
         exit(-1);
     }
-    return mem[address];
+    return memory[address];
 }
 
 void
 mem_free()
 {
-    free(mem);
+    free(memory);
 }
 
 void mem_write(word_t address, byte_t value)
@@ -40,26 +41,14 @@ void mem_write(word_t address, byte_t value)
     // custom writes
     switch (address) {
         case REG_DIV:
-            mem[address] = 0x00;
+            memory[address] = 0x00;
             return;
         default:
             // regular write
-            mem[address] = value;
+            memory[address] = value;
     }
 }
 
 word_t mem_read_word(word_t current_pc) {
     return bytes_to_word(mem_read(current_pc + 1), mem_read(current_pc));
-}
-
-void reg_increment_TIMA() {
-    byte_t tima = mem_read(REG_TIMA);
-    // When the value overflows (exceeds $FF) it is reset to the value specified in TMA (FF06)
-    // and an interrupt is requested, as described below.
-    if (tima == 0xFF) {
-        tima = mem_read(REG_TMA);
-        // TODO: request interrupt
-    } else {
-        mem_write(REG_TIMA, tima + 1);
-    }
 }
