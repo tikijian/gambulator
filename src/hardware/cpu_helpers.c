@@ -151,9 +151,9 @@ void cpu_update_flags(byte_t a, byte_t b, word_t result, char* flag_operations){
 void cpu_push_pc()
 {
     cpu.SP--;
-    mem_write_byte(cpu.SP, MS_BYTE(cpu.PC));
+    mem_write(cpu.SP, MS_BYTE(cpu.PC));
     cpu.SP--;
-    mem_write_byte(cpu.SP, LS_BYTE(cpu.PC));
+    mem_write(cpu.SP, LS_BYTE(cpu.PC));
 }
 
 word_t cpu_stack_pop()
@@ -275,7 +275,7 @@ void cpu_exec_CB_opcode(opcode_t opcode) {
             cpu.L = result; break;
         case 0x6:
         case 0xE:
-            mem_write_byte(cpu_HL(), result); break;
+            mem_write(cpu_HL(), result); break;
         case 0x7:
         case 0xF:
             cpu.A = result; break;

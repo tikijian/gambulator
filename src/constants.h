@@ -11,4 +11,10 @@
 #define FLAG_HALF_CARRY_BIT 5
 #define FLAG_CARRY_BIT 4
 
+// Hardware registers
+#define REG_DIV 0xFF04
+#define REG_TIMA 0xFF05
+#define REG_TMA 0xFF06
+#define REG_TAC 0xFF07
+
 #endif

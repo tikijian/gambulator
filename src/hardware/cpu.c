@@ -70,7 +70,10 @@ void cpu_exec(opcode_t opcode, void* mem) {
 static void HALT(opcode_t) {
     printf("HALT\n");
 }
+
 static void STOP(opcode_t) {
+    mem_write(REG_DIV, 0);
+    // TODO: Implementation
     printf("STOP\n");
     exit(0);
 }
@@ -228,9 +231,9 @@ static void CALL(opcode_t) {
     word_t addr = mem_read_word(cpu.PC);
     cpu.PC = cpu.PC + 2;
     cpu.SP--;
-    mem_write_byte(cpu.SP, MS_BYTE(cpu.PC));
+    mem_write(cpu.SP, MS_BYTE(cpu.PC));
     cpu.SP--;
-    mem_write_byte(cpu.SP, LS_BYTE(cpu.PC));
+    mem_write(cpu.SP, LS_BYTE(cpu.PC));
     
     cpu.PC = addr;
 }
@@ -277,15 +280,15 @@ static void LD_mem_from_A(opcode_t current_opcode) {
             printf("LD_mem_from_A: unknown case 0x%02x\n", current_opcode);
             exit(-1);
     }
-    mem_write_byte(addr, cpu.A);
+    mem_write(addr, cpu.A);
 }
 
 static void LD_mem_from_SP(opcode_t) {
     word_t addr = mem_read_word(cpu.PC);
     // printf("addr %04X = %02X, addr %04X = %02X\n", addr, LS_BYTE(cpu.SP), addr + 1, MS_BYTE(cpu.SP));
     cpu.PC += 2;
-    mem_write_byte(addr, LS_BYTE(cpu.SP));
-    mem_write_byte(addr + 1, MS_BYTE(cpu.SP));
+    mem_write(addr, LS_BYTE(cpu.SP));
+    mem_write(addr + 1, MS_BYTE(cpu.SP));
 }
 
 static void LD_16reg_from_mem(opcode_t current_opcode) {
@@ -315,7 +318,7 @@ static void LD_SP_HL(opcode_t) {
 /* 8-bit loads */
 static void LD_mem_from_reg(opcode_t current_opcode) {
     byte_t data = cpu_get_reg_by_code(current_opcode);
-    mem_write_byte(cpu_HL(), data);
+    mem_write(cpu_HL(), data);
 }
 
 static void LD_8reg_to_reg(opcode_t current_opcode) {
@@ -336,7 +339,7 @@ static void LD_8reg_from_mem(opcode_t current_opcode) {
             cpu.H = value;
             break;
         case 0x36:
-            mem_write_byte(cpu_HL(), value);
+            mem_write(cpu_HL(), value);
             break;
         case 0x0E:
             cpu.C = value;
@@ -388,14 +391,14 @@ static void LD_A_from_mem_at_16_reg(opcode_t current_opcode) {
 static void LD_mem_at_PC_from_A(opcode_t) {
     word_t target_addr = mem_read_word(cpu.PC);
     cpu.PC += 2;
-    mem_write_byte(target_addr, cpu.A);
+    mem_write(target_addr, cpu.A);
 }
 
 static void LDH_mem_from_A(opcode_t) {
     byte_t lsb = mem_read(cpu.PC);
     cpu.PC++;
     word_t target_addr = bytes_to_word(0xFF, lsb);
-    mem_write_byte(target_addr, cpu.A);
+    mem_write(target_addr, cpu.A);
 }
 
 static void LDH_A_from_mem(opcode_t) {
@@ -541,7 +544,7 @@ static void INC_8_reg(opcode_t current_opcode) {
             break;
         case 0x34:
             target = mem_read(cpu_HL());
-            mem_write_byte(cpu_HL(), target + 1);
+            mem_write(cpu_HL(), target + 1);
             break;
         case 0x0C:
             target = cpu.C;
@@ -584,7 +587,7 @@ static void DEC_8_reg(opcode_t current_opcode) {
             break;
         case 0x35:
             target = mem_read(cpu_HL());
-            mem_write_byte(cpu_HL(), target - 1);
+            mem_write(cpu_HL(), target - 1);
             break;
         case 0x0D:
             target = cpu.C;
@@ -681,20 +684,20 @@ static void RRA(opcode_t) {
 static void PUSH(opcode_t current_opcode) {
     switch (current_opcode) {
         case 0xC5:
-            cpu.SP--; mem_write_byte(cpu.SP, cpu.B);
-            cpu.SP--; mem_write_byte(cpu.SP, cpu.C);
+            cpu.SP--; mem_write(cpu.SP, cpu.B);
+            cpu.SP--; mem_write(cpu.SP, cpu.C);
             break;
         case 0xD5:
-            cpu.SP--; mem_write_byte(cpu.SP, cpu.D);
-            cpu.SP--; mem_write_byte(cpu.SP, cpu.E);
+            cpu.SP--; mem_write(cpu.SP, cpu.D);
+            cpu.SP--; mem_write(cpu.SP, cpu.E);
             break;
         case 0xE5:
-            cpu.SP--; mem_write_byte(cpu.SP, cpu.H);
-            cpu.SP--; mem_write_byte(cpu.SP, cpu.L);
+            cpu.SP--; mem_write(cpu.SP, cpu.H);
+            cpu.SP--; mem_write(cpu.SP, cpu.L);
             break;
         case 0xF5:
-            cpu.SP--; mem_write_byte(cpu.SP, cpu.A);
-            cpu.SP--; mem_write_byte(cpu.SP, cpu_F());
+            cpu.SP--; mem_write(cpu.SP, cpu.A);
+            cpu.SP--; mem_write(cpu.SP, cpu_F());
             break;
         default:
             printf("PUSH: unknown case 0x%02x\n", current_opcode);
