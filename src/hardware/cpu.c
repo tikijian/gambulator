@@ -5,6 +5,7 @@
 #include "../routines.h"
 #include "cpu.h"
 #include "memory.h"
+#include "clock.h"
 #include "cpu_helpers.h"
 
 
@@ -30,15 +31,18 @@ struct CPU cpu = {
         .IME = 0,
 };
 
-void cpu_exec(opcode_t opcode, void* mem) {
+cycle_t cpu_exec() {
+    opcode_t opcode = mem_read(cpu.PC);
+    clock.cycles++;
+
     if (opcode == OPCODE_PREFIX) {
         // read next instruction after prefix-opcode
         cpu.PC++;
         opcode = mem_read(cpu.PC);
+        clock.cycles++;
         cpu.PC++;
 
-        cpu_exec_CB_opcode(opcode);
-        return;
+        return cpu_exec_CB_opcode(opcode);
     }
 
     // printf("CPU-PC: 0x%04X, OP: 0x%02X\n", cpu.PC, opcode);
@@ -47,7 +51,7 @@ void cpu_exec(opcode_t opcode, void* mem) {
     // NOP
     if (opcode == 0x00) {
         cpu.PC++;
-        return;
+        return 1;
     }
     log_cpu_full_16(opcode);
     // printf("PC: 0x%04X, OP: 0x%02X, A: %02X, SP: %04X, C: %02X, D: %02X, Z: %i\n", cpu.PC, opcode, cpu.A, cpu.SP, cpu.C, cpu.D, cpu.FZ);
@@ -60,30 +64,32 @@ void cpu_exec(opcode_t opcode, void* mem) {
 
     // printf("op: 0x%02x - flag %02x, flags %02x \n", opcode, cpu.Z, cpu.F);
     cpu.PC++;
-    opcodes[opcode](opcode);
+    return opcodes[opcode](opcode);
     // printf("op: 0x%02x - flag %02x, flags %02x \n\n", opcode, cpu.Z, cpu.F);
-
 }
 
 
 /* Control Flow-s */
-static void HALT(opcode_t) {
+static cycle_t HALT(opcode_t) {
     printf("HALT\n");
+    return 1;
 }
 
-static void STOP(opcode_t) {
+static cycle_t STOP(opcode_t) {
     mem_write(REG_DIV, 0);
     // TODO: Implementation
+    // return 1;
     printf("STOP\n");
     exit(0);
 }
 
-static void JP_nn(opcode_t) {
+static cycle_t JP_nn(opcode_t) {
     cpu.PC = mem_read_word(cpu.PC);
     printf("jumping to %04x\n", cpu.PC);
+    return 4;
 }
 
-static void JP_cond(opcode_t current_opcode) {
+static cycle_t JP_cond(opcode_t current_opcode) {
     word_t addr = mem_read_word(cpu.PC);
     cpu.PC = cpu.PC + 2;
 
@@ -109,10 +115,12 @@ static void JP_cond(opcode_t current_opcode) {
     if (condition_result) {
         printf("jumping to %04X\n", addr);
         cpu.PC = addr; // jump
+        return 4;
     }
+    return 3;
 }
 
-static void JR_cond(opcode_t current_opcode) {
+static cycle_t JR_cond(opcode_t current_opcode) {
     byte_t offset = mem_read(cpu.PC);
     cpu.PC++;
 
@@ -133,19 +141,23 @@ static void JR_cond(opcode_t current_opcode) {
 
     if (condition_result) {
         cpu.PC = cpu.PC + (s_byte_t)offset;
+        return 3;
     }
+    return 2;
 }
 
-static void RET(opcode_t) {
+static cycle_t RET(opcode_t) {
     cpu.PC = cpu_stack_pop();
+    return 4;
 }
 
-static void RET_I(opcode_t) {
+static cycle_t RET_I(opcode_t) {
     RET(0);
     cpu.IME = 1;
+    return 4;
 }
 
-static void RET_cond(opcode_t current_opcode) {
+static cycle_t RET_cond(opcode_t current_opcode) {
     byte_t condition_result = 0;
     switch (current_opcode) {
         case 0xC0: // NZ
@@ -167,10 +179,12 @@ static void RET_cond(opcode_t current_opcode) {
 
     if (condition_result) {
         cpu.PC = cpu_stack_pop();
+        return 5;
     }
+    return 2;
 }
 
-static void RST(opcode_t current_opcode) {
+static cycle_t RST(opcode_t current_opcode) {
     byte_t addr;
     switch (current_opcode) {
         case 0xC7:
@@ -197,7 +211,7 @@ static void RST(opcode_t current_opcode) {
     cpu.PC = bytes_to_word(0x00, addr);
 }
 
-static void CALL_cond(opcode_t current_opcode) {
+static cycle_t CALL_cond(opcode_t current_opcode) {
     word_t addr = mem_read_word(cpu.PC);
     cpu.PC = cpu.PC + 2;
 
@@ -227,7 +241,7 @@ static void CALL_cond(opcode_t current_opcode) {
     }
 }
 
-static void CALL(opcode_t) {
+static cycle_t CALL(opcode_t) {
     word_t addr = mem_read_word(cpu.PC);
     cpu.PC = cpu.PC + 2;
     cpu.SP--;
@@ -238,26 +252,26 @@ static void CALL(opcode_t) {
     cpu.PC = addr;
 }
 
-static void JR(opcode_t) {
+static cycle_t JR(opcode_t) {
     byte_t offset = mem_read(cpu.PC);
     cpu.PC++;
     cpu.PC = cpu.PC + (s_byte_t)offset;
 }
 
-static void JP_HL(opcode_t) {
+static cycle_t JP_HL(opcode_t) {
     cpu.PC = cpu_HL();
 }
 /* -------------- /
 
 
 /* 16-bit loads */
-static void LD_A_from_mem(opcode_t) {
+static cycle_t LD_A_from_mem(opcode_t) {
     word_t target_addr = mem_read_word(cpu.PC);
     cpu.PC += 2;
     cpu.A = mem_read(target_addr);
 }
 
-static void LD_mem_from_A(opcode_t current_opcode) {
+static cycle_t LD_mem_from_A(opcode_t current_opcode) {
     word_t addr;
     switch (current_opcode) {
         case 0x02:
@@ -283,7 +297,7 @@ static void LD_mem_from_A(opcode_t current_opcode) {
     mem_write(addr, cpu.A);
 }
 
-static void LD_mem_from_SP(opcode_t) {
+static cycle_t LD_mem_from_SP(opcode_t) {
     word_t addr = mem_read_word(cpu.PC);
     // printf("addr %04X = %02X, addr %04X = %02X\n", addr, LS_BYTE(cpu.SP), addr + 1, MS_BYTE(cpu.SP));
     cpu.PC += 2;
@@ -291,7 +305,7 @@ static void LD_mem_from_SP(opcode_t) {
     mem_write(addr + 1, MS_BYTE(cpu.SP));
 }
 
-static void LD_16reg_from_mem(opcode_t current_opcode) {
+static cycle_t LD_16reg_from_mem(opcode_t current_opcode) {
     word_t value = mem_read_word(cpu.PC);
     cpu.PC += 2;
 
@@ -310,23 +324,23 @@ static void LD_16reg_from_mem(opcode_t current_opcode) {
     }
 }
 
-static void LD_SP_HL(opcode_t) {
+static cycle_t LD_SP_HL(opcode_t) {
     cpu.SP = cpu_HL();
 }
 /* -------------- */
 
 /* 8-bit loads */
-static void LD_mem_from_reg(opcode_t current_opcode) {
+static cycle_t LD_mem_from_reg(opcode_t current_opcode) {
     byte_t data = cpu_get_reg_by_code(current_opcode);
     mem_write(cpu_HL(), data);
 }
 
-static void LD_8reg_to_reg(opcode_t current_opcode) {
+static cycle_t LD_8reg_to_reg(opcode_t current_opcode) {
     byte_t data = cpu_get_reg_by_code(current_opcode);
     cpu_set_reg_by_code(current_opcode, data);
 }
 
-static void LD_8reg_from_mem(opcode_t current_opcode) {
+static cycle_t LD_8reg_from_mem(opcode_t current_opcode) {
     byte_t value = mem_read(cpu.PC);
     switch (current_opcode) {
         case 0x06:
@@ -360,7 +374,7 @@ static void LD_8reg_from_mem(opcode_t current_opcode) {
     cpu.PC++;
 }
 
-static void LD_A_from_mem_at_16_reg(opcode_t current_opcode) {
+static cycle_t LD_A_from_mem_at_16_reg(opcode_t current_opcode) {
     byte_t data;
     switch (current_opcode) {   
         case 0x0A:
@@ -388,20 +402,20 @@ static void LD_A_from_mem_at_16_reg(opcode_t current_opcode) {
     cpu.A = data;
 }
 
-static void LD_mem_at_PC_from_A(opcode_t) {
+static cycle_t LD_mem_at_PC_from_A(opcode_t) {
     word_t target_addr = mem_read_word(cpu.PC);
     cpu.PC += 2;
     mem_write(target_addr, cpu.A);
 }
 
-static void LDH_mem_from_A(opcode_t) {
+static cycle_t LDH_mem_from_A(opcode_t) {
     byte_t lsb = mem_read(cpu.PC);
     cpu.PC++;
     word_t target_addr = bytes_to_word(0xFF, lsb);
     mem_write(target_addr, cpu.A);
 }
 
-static void LDH_A_from_mem(opcode_t) {
+static cycle_t LDH_A_from_mem(opcode_t) {
     byte_t target_addr_lsb = mem_read(cpu.PC);
     cpu.PC++;
     word_t target_addr = bytes_to_word(0xFF, target_addr_lsb);
@@ -410,7 +424,7 @@ static void LDH_A_from_mem(opcode_t) {
 /* -------------- */
 
 /* 16-bit arithmetics */
-static void INC_16(opcode_t current_opcode) {
+static cycle_t INC_16(opcode_t current_opcode) {
     switch (last_bit(current_opcode)) {
         case 0x00: {
             word_t value = bytes_to_word(cpu.B, cpu.C);
@@ -439,7 +453,7 @@ static void INC_16(opcode_t current_opcode) {
     }
 }
 
-static void DEC_16(opcode_t current_opcode) {
+static cycle_t DEC_16(opcode_t current_opcode) {
     switch (last_bit(current_opcode)) {
         case 0x00: {
             word_t value = bytes_to_word(cpu.B, cpu.C);
@@ -468,7 +482,7 @@ static void DEC_16(opcode_t current_opcode) {
     }
 }
 
-static void ADD_16reg_to_HL(opcode_t current_opcode) {
+static cycle_t ADD_16reg_to_HL(opcode_t current_opcode) {
     word_t hl = cpu_HL();
     word_t target;
     switch (last_bit(current_opcode)) {
@@ -495,7 +509,7 @@ static void ADD_16reg_to_HL(opcode_t current_opcode) {
 /* -------------- */
 
 /* 8-Bit Arithmetics */
-static void ADD_reg_to_A(opcode_t current_opcode) {
+static cycle_t ADD_reg_to_A(opcode_t current_opcode) {
     byte_t value = cpu_get_reg_by_code(current_opcode);
     word_t result = cpu.A + value;
     
@@ -503,7 +517,7 @@ static void ADD_reg_to_A(opcode_t current_opcode) {
     cpu_update_flags(cpu.A, value, result, "Z0HC");
 }
 
-static void ADC_reg_to_A(opcode_t current_opcode) {
+static cycle_t ADC_reg_to_A(opcode_t current_opcode) {
     byte_t value = cpu_get_reg_by_code(current_opcode);
     word_t result = cpu.A + value + cpu.FC;
     
@@ -511,7 +525,7 @@ static void ADC_reg_to_A(opcode_t current_opcode) {
     cpu_update_flags(cpu.A, value, result, "Z0HC");
 }
 
-static void SUB_reg_from_A(opcode_t current_opcode) {
+static cycle_t SUB_reg_from_A(opcode_t current_opcode) {
     byte_t value = cpu_get_reg_by_code(current_opcode);
     word_t result = cpu.A - value;
     
@@ -519,7 +533,7 @@ static void SUB_reg_from_A(opcode_t current_opcode) {
     cpu_update_flags(cpu.A, value, result, "Z1HC");
 }
 
-static void SBC_reg_from_A(opcode_t current_opcode) {
+static cycle_t SBC_reg_from_A(opcode_t current_opcode) {
     byte_t value = cpu_get_reg_by_code(current_opcode);
     word_t result = cpu.A - value - cpu.FC;
     
@@ -527,7 +541,7 @@ static void SBC_reg_from_A(opcode_t current_opcode) {
     cpu_update_flags(cpu.A, value, result, "Z1HC");
 }
 
-static void INC_8_reg(opcode_t current_opcode) {
+static cycle_t INC_8_reg(opcode_t current_opcode) {
     byte_t target;
     switch (current_opcode) {
         case 0x04:
@@ -570,7 +584,7 @@ static void INC_8_reg(opcode_t current_opcode) {
     cpu_update_flags(target, 1, target + 1, "Z0H-");
 }
 
-static void DEC_8_reg(opcode_t current_opcode) {
+static cycle_t DEC_8_reg(opcode_t current_opcode) {
     byte_t target;
     switch (current_opcode) {
         case 0x05:
@@ -612,35 +626,35 @@ static void DEC_8_reg(opcode_t current_opcode) {
     cpu_update_flags(target, 1, target - 1, "Z1H-");
 }
 
-static void AND_8_reg(opcode_t current_opcode) {
+static cycle_t AND_8_reg(opcode_t current_opcode) {
     byte_t val = cpu_get_reg_by_code(current_opcode);
     byte_t new_val = cpu.A & val;
     cpu.A = new_val;
     cpu_update_flags(cpu.A, val, new_val, "Z010");
 }
 
-static void XOR_8_reg(opcode_t current_opcode) {
+static cycle_t XOR_8_reg(opcode_t current_opcode) {
     byte_t val = cpu_get_reg_by_code(current_opcode);
     byte_t new_val = cpu.A ^ val;
     cpu.A = new_val;
     cpu_update_flags(cpu.A, val, new_val, "Z000");
 }
 
-static void OR_8_reg(opcode_t current_opcode) {
+static cycle_t OR_8_reg(opcode_t current_opcode) {
     byte_t val = cpu_get_reg_by_code(current_opcode);
     byte_t new_val = cpu.A | val;
     cpu.A = new_val;
     cpu_update_flags(cpu.A, val, new_val, "Z000");
 }
 
-static void CP_8_reg(opcode_t current_opcode) {
+static cycle_t CP_8_reg(opcode_t current_opcode) {
     byte_t val = val = cpu_get_reg_by_code(current_opcode);
     word_t new_val = cpu.A - val;
     cpu_update_flags(cpu.A, val, new_val, "Z1HC");
 }
 
 // from https://blog.ollien.com/posts/gb-daa/
-static void DAA(opcode_t) {
+static cycle_t DAA(opcode_t) {
     byte_t offset, carry = 0;
     byte_t value = cpu.A;
 
@@ -667,13 +681,13 @@ static void DAA(opcode_t) {
     cpu.A = result;
 }
 
-static void RRCA(opcode_t) {
+static cycle_t RRCA(opcode_t) {
     cpu.FZ = cpu.FH = cpu.FN = 0;
     cpu.FC = cpu.A & 0x1;
     cpu.A = R_ROTATE(cpu.A);
 }
 
-static void RRA(opcode_t) {
+static cycle_t RRA(opcode_t) {
     cpu.FZ = cpu.FH = cpu.FN = 0;
     cpu.FC = cpu.A & 0x1;
     cpu.A = R_ROTATE_THROUGH_CARRY(cpu.A);
@@ -681,7 +695,7 @@ static void RRA(opcode_t) {
 /* -------------- */
 
 /* Stack operations */
-static void PUSH(opcode_t current_opcode) {
+static cycle_t PUSH(opcode_t current_opcode) {
     switch (current_opcode) {
         case 0xC5:
             cpu.SP--; mem_write(cpu.SP, cpu.B);
@@ -705,7 +719,7 @@ static void PUSH(opcode_t current_opcode) {
         } 
 }
 
-static void POP(opcode_t current_opcode) {
+static cycle_t POP(opcode_t current_opcode) {
     switch (current_opcode) {
         case 0xC1:
             cpu.C = mem_read(cpu.SP); cpu.SP++;
@@ -736,12 +750,12 @@ static void POP(opcode_t current_opcode) {
 /* -------------- */
 
 /* Misc */
-static void DI(opcode_t) {
+static cycle_t DI(opcode_t) {
     cpu.IME = 0;
 }
 
 // TODO: Schedules interrupt handling to be enabled after the next machine cycle.
-static void EI(opcode_t) {
+static cycle_t EI(opcode_t) {
     cpu.IME = 1;
 }
 /* -------------- */

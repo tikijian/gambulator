@@ -8,9 +8,10 @@ typedef byte_t opcode_t;
 // size of 0xFFFF
 typedef unsigned short word_t;
 
-// pointer to opcode execution function
-typedef void (*opcode_handler_t)(opcode_t);
-
 typedef unsigned long int cycle_t;
+
+// pointer to opcode execution function
+typedef cycle_t (*opcode_handler_t)(opcode_t);
+
 
 #endif

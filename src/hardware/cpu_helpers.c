@@ -202,7 +202,7 @@ byte_t SWAP(byte_t target) {
     return result;
 }
 
-void cpu_exec_CB_opcode(opcode_t opcode) {
+cycle_t cpu_exec_CB_opcode(opcode_t opcode) {
     byte_t val;
     byte_t should_update = 1;
     switch (first_bit(opcode))

@@ -1,6 +1,8 @@
 #ifndef _CONSTANTS
 #define _CONSTANTS
 
+#define CPU_CYCLES_PER_M_CYCLE 4
+
 #define ADDR_ROM_START 0x100
 #define MEM_TOTAL 0xFFFF
 

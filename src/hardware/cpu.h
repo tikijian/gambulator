@@ -22,6 +22,6 @@ struct CPU {
 // I know that globals are bad :D
 extern struct CPU cpu;
 
-void cpu_exec(opcode_t, void* memory);
+cycle_t cpu_exec();
 
 #endif

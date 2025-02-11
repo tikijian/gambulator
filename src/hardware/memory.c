@@ -5,6 +5,7 @@
 #include "../constants.h"
 #include "../routines.h"
 #include "memory.h"
+#include "clock.h"
 
 byte_t* memory = NULL;
 

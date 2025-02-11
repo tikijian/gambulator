@@ -7,6 +7,7 @@
 #include "hardware/cpu_helpers.h"
 #include "hardware/memory.h"
 #include "hardware/timer.h"
+#include "hardware/clock.h"
 #include "software/utils.h"
 #include "routines.h"
 
@@ -23,10 +24,9 @@ int main(int argc, char const *argv[])
     // printf("0x%02X 0x%02X\n", memory[0xff0f], memory[0xff07]);
 
     do {
-        // TODO: verify, if it should be before or after cpu_exec()
+        clock.cycles += cpu_exec();
+        
         timer_update();
-
-        cpu_exec(mem_read(cpu.PC), memory);
     } while (1);
 
     mem_free();
