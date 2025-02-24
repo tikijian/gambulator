@@ -29,17 +29,16 @@ struct CPU cpu = {
         .PC = 0x0100,
 
         .IME = 0,
+        .stopped = 0,
 };
 
 cycle_t cpu_exec() {
     opcode_t opcode = mem_read(cpu.PC);
-    clock.cycles++;
 
     if (opcode == OPCODE_PREFIX) {
         // read next instruction after prefix-opcode
         cpu.PC++;
         opcode = mem_read(cpu.PC);
-        clock.cycles++;
         cpu.PC++;
 
         return cpu_exec_CB_opcode(opcode);
@@ -72,11 +71,12 @@ cycle_t cpu_exec() {
 /* Control Flow-s */
 static cycle_t HALT(opcode_t) {
     printf("HALT\n");
-    return 1;
+    return 0;
 }
 
 static cycle_t STOP(opcode_t) {
     mem_write(REG_DIV, 0);
+    cpu.stopped = 1;
     // TODO: Implementation
     // return 1;
     printf("STOP\n");
@@ -86,7 +86,7 @@ static cycle_t STOP(opcode_t) {
 static cycle_t JP_nn(opcode_t) {
     cpu.PC = mem_read_word(cpu.PC);
     printf("jumping to %04x\n", cpu.PC);
-    return 4;
+    return 1;
 }
 
 static cycle_t JP_cond(opcode_t current_opcode) {
@@ -115,9 +115,9 @@ static cycle_t JP_cond(opcode_t current_opcode) {
     if (condition_result) {
         printf("jumping to %04X\n", addr);
         cpu.PC = addr; // jump
-        return 4;
+        return 1;
     }
-    return 3;
+    return 0;
 }
 
 static cycle_t JR_cond(opcode_t current_opcode) {
@@ -141,20 +141,19 @@ static cycle_t JR_cond(opcode_t current_opcode) {
 
     if (condition_result) {
         cpu.PC = cpu.PC + (s_byte_t)offset;
-        return 3;
+        return 1;
     }
-    return 2;
+    return 0;
 }
 
 static cycle_t RET(opcode_t) {
     cpu.PC = cpu_stack_pop();
-    return 4;
+    return 1;
 }
 
 static cycle_t RET_I(opcode_t) {
-    RET(0);
     cpu.IME = 1;
-    return 4;
+    return RET(0);
 }
 
 static cycle_t RET_cond(opcode_t current_opcode) {
@@ -179,9 +178,9 @@ static cycle_t RET_cond(opcode_t current_opcode) {
 
     if (condition_result) {
         cpu.PC = cpu_stack_pop();
-        return 5;
+        return 2;
     }
-    return 2;
+    return 1;
 }
 
 static cycle_t RST(opcode_t current_opcode) {
@@ -209,6 +208,7 @@ static cycle_t RST(opcode_t current_opcode) {
     }
     cpu_push_pc();
     cpu.PC = bytes_to_word(0x00, addr);
+    return 1;
 }
 
 static cycle_t CALL_cond(opcode_t current_opcode) {
@@ -238,7 +238,9 @@ static cycle_t CALL_cond(opcode_t current_opcode) {
     if (condition_result) {
         cpu_push_pc();
         cpu.PC = addr; // jump
+        return 1;
     }
+    return 0;
 }
 
 static cycle_t CALL(opcode_t) {
@@ -250,18 +252,21 @@ static cycle_t CALL(opcode_t) {
     mem_write(cpu.SP, LS_BYTE(cpu.PC));
     
     cpu.PC = addr;
+    return 1;
 }
 
 static cycle_t JR(opcode_t) {
     byte_t offset = mem_read(cpu.PC);
     cpu.PC++;
     cpu.PC = cpu.PC + (s_byte_t)offset;
+    return 1;
 }
 
 static cycle_t JP_HL(opcode_t) {
     cpu.PC = cpu_HL();
+    return 0;
 }
-/* -------------- /
+/* -------------- */
 
 
 /* 16-bit loads */
@@ -269,6 +274,7 @@ static cycle_t LD_A_from_mem(opcode_t) {
     word_t target_addr = mem_read_word(cpu.PC);
     cpu.PC += 2;
     cpu.A = mem_read(target_addr);
+    return 0;
 }
 
 static cycle_t LD_mem_from_A(opcode_t current_opcode) {
@@ -295,14 +301,15 @@ static cycle_t LD_mem_from_A(opcode_t current_opcode) {
             exit(-1);
     }
     mem_write(addr, cpu.A);
+    return 0;
 }
 
 static cycle_t LD_mem_from_SP(opcode_t) {
     word_t addr = mem_read_word(cpu.PC);
-    // printf("addr %04X = %02X, addr %04X = %02X\n", addr, LS_BYTE(cpu.SP), addr + 1, MS_BYTE(cpu.SP));
     cpu.PC += 2;
     mem_write(addr, LS_BYTE(cpu.SP));
     mem_write(addr + 1, MS_BYTE(cpu.SP));
+    return 0;
 }
 
 static cycle_t LD_16reg_from_mem(opcode_t current_opcode) {
@@ -322,10 +329,12 @@ static cycle_t LD_16reg_from_mem(opcode_t current_opcode) {
             printf("LD_16reg_from_mem: unknown case 0x%02x\n", current_opcode);
             exit(-1);
     }
+    return 0;
 }
 
 static cycle_t LD_SP_HL(opcode_t) {
     cpu.SP = cpu_HL();
+    return 0;
 }
 /* -------------- */
 
@@ -333,11 +342,13 @@ static cycle_t LD_SP_HL(opcode_t) {
 static cycle_t LD_mem_from_reg(opcode_t current_opcode) {
     byte_t data = cpu_get_reg_by_code(current_opcode);
     mem_write(cpu_HL(), data);
+    return 0;
 }
 
 static cycle_t LD_8reg_to_reg(opcode_t current_opcode) {
     byte_t data = cpu_get_reg_by_code(current_opcode);
     cpu_set_reg_by_code(current_opcode, data);
+    return 0;
 }
 
 static cycle_t LD_8reg_from_mem(opcode_t current_opcode) {
@@ -372,6 +383,7 @@ static cycle_t LD_8reg_from_mem(opcode_t current_opcode) {
             exit(-1);
     }
     cpu.PC++;
+    return 0;
 }
 
 static cycle_t LD_A_from_mem_at_16_reg(opcode_t current_opcode) {
@@ -400,12 +412,14 @@ static cycle_t LD_A_from_mem_at_16_reg(opcode_t current_opcode) {
             exit(-1);
     }
     cpu.A = data;
+    return 0;
 }
 
 static cycle_t LD_mem_at_PC_from_A(opcode_t) {
     word_t target_addr = mem_read_word(cpu.PC);
     cpu.PC += 2;
     mem_write(target_addr, cpu.A);
+    return 0;
 }
 
 static cycle_t LDH_mem_from_A(opcode_t) {
@@ -413,6 +427,7 @@ static cycle_t LDH_mem_from_A(opcode_t) {
     cpu.PC++;
     word_t target_addr = bytes_to_word(0xFF, lsb);
     mem_write(target_addr, cpu.A);
+    return 0;
 }
 
 static cycle_t LDH_A_from_mem(opcode_t) {
@@ -420,6 +435,7 @@ static cycle_t LDH_A_from_mem(opcode_t) {
     cpu.PC++;
     word_t target_addr = bytes_to_word(0xFF, target_addr_lsb);
     cpu.A = mem_read(target_addr);
+    return 0;
 }
 /* -------------- */
 
@@ -451,6 +467,7 @@ static cycle_t INC_16(opcode_t current_opcode) {
             printf("INC_16: unknown case 0x%02x\n", current_opcode);
             exit(-1);
     }
+    return 0;
 }
 
 static cycle_t DEC_16(opcode_t current_opcode) {
@@ -480,6 +497,7 @@ static cycle_t DEC_16(opcode_t current_opcode) {
             printf("DEC_16: unknown case 0x%02x\n", current_opcode);
             exit(-1);
     }
+    return 0;
 }
 
 static cycle_t ADD_16reg_to_HL(opcode_t current_opcode) {
@@ -504,6 +522,7 @@ static cycle_t ADD_16reg_to_HL(opcode_t current_opcode) {
     cpu.FC = result > 0xFFFF;
     cpu.FN = 0;
     cpu_set_HL((word_t)result);
+    return 0;
 }
 
 /* -------------- */
@@ -515,6 +534,7 @@ static cycle_t ADD_reg_to_A(opcode_t current_opcode) {
     
     cpu.A = (byte_t)result;    
     cpu_update_flags(cpu.A, value, result, "Z0HC");
+    return 0;
 }
 
 static cycle_t ADC_reg_to_A(opcode_t current_opcode) {
@@ -523,6 +543,7 @@ static cycle_t ADC_reg_to_A(opcode_t current_opcode) {
     
     cpu.A = (byte_t)result;    
     cpu_update_flags(cpu.A, value, result, "Z0HC");
+    return 0;
 }
 
 static cycle_t SUB_reg_from_A(opcode_t current_opcode) {
@@ -531,6 +552,7 @@ static cycle_t SUB_reg_from_A(opcode_t current_opcode) {
     
     cpu.A = (byte_t)result;    
     cpu_update_flags(cpu.A, value, result, "Z1HC");
+    return 0;
 }
 
 static cycle_t SBC_reg_from_A(opcode_t current_opcode) {
@@ -539,6 +561,7 @@ static cycle_t SBC_reg_from_A(opcode_t current_opcode) {
     
     cpu.A = (byte_t)result;    
     cpu_update_flags(cpu.A, value, result, "Z1HC");
+    return 0;
 }
 
 static cycle_t INC_8_reg(opcode_t current_opcode) {
@@ -582,6 +605,7 @@ static cycle_t INC_8_reg(opcode_t current_opcode) {
     }
     
     cpu_update_flags(target, 1, target + 1, "Z0H-");
+    return 0;
 }
 
 static cycle_t DEC_8_reg(opcode_t current_opcode) {
@@ -624,6 +648,7 @@ static cycle_t DEC_8_reg(opcode_t current_opcode) {
             exit(-1);
     }
     cpu_update_flags(target, 1, target - 1, "Z1H-");
+    return 0;
 }
 
 static cycle_t AND_8_reg(opcode_t current_opcode) {
@@ -631,6 +656,7 @@ static cycle_t AND_8_reg(opcode_t current_opcode) {
     byte_t new_val = cpu.A & val;
     cpu.A = new_val;
     cpu_update_flags(cpu.A, val, new_val, "Z010");
+    return 0;
 }
 
 static cycle_t XOR_8_reg(opcode_t current_opcode) {
@@ -638,6 +664,7 @@ static cycle_t XOR_8_reg(opcode_t current_opcode) {
     byte_t new_val = cpu.A ^ val;
     cpu.A = new_val;
     cpu_update_flags(cpu.A, val, new_val, "Z000");
+    return 0;
 }
 
 static cycle_t OR_8_reg(opcode_t current_opcode) {
@@ -645,12 +672,14 @@ static cycle_t OR_8_reg(opcode_t current_opcode) {
     byte_t new_val = cpu.A | val;
     cpu.A = new_val;
     cpu_update_flags(cpu.A, val, new_val, "Z000");
+    return 0;
 }
 
 static cycle_t CP_8_reg(opcode_t current_opcode) {
     byte_t val = val = cpu_get_reg_by_code(current_opcode);
     word_t new_val = cpu.A - val;
     cpu_update_flags(cpu.A, val, new_val, "Z1HC");
+    return 0;
 }
 
 // from https://blog.ollien.com/posts/gb-daa/
@@ -679,18 +708,21 @@ static cycle_t DAA(opcode_t) {
     cpu.FZ = result == 0 ? 1 : 0;
     cpu.FH = 0;
     cpu.A = result;
+    return 0;
 }
 
 static cycle_t RRCA(opcode_t) {
     cpu.FZ = cpu.FH = cpu.FN = 0;
     cpu.FC = cpu.A & 0x1;
     cpu.A = R_ROTATE(cpu.A);
+    return 0;
 }
 
 static cycle_t RRA(opcode_t) {
     cpu.FZ = cpu.FH = cpu.FN = 0;
     cpu.FC = cpu.A & 0x1;
     cpu.A = R_ROTATE_THROUGH_CARRY(cpu.A);
+    return 0;
 }
 /* -------------- */
 
@@ -717,6 +749,7 @@ static cycle_t PUSH(opcode_t current_opcode) {
             printf("PUSH: unknown case 0x%02x\n", current_opcode);
             exit(-1);
         } 
+    return 1;
 }
 
 static cycle_t POP(opcode_t current_opcode) {
@@ -746,17 +779,20 @@ static cycle_t POP(opcode_t current_opcode) {
             printf("POP: unknown case 0x%02x\n", current_opcode);
             exit(-1);
         } 
+    return 0;
 }
 /* -------------- */
 
 /* Misc */
 static cycle_t DI(opcode_t) {
     cpu.IME = 0;
+    return 0;
 }
 
 // TODO: Schedules interrupt handling to be enabled after the next machine cycle.
 static cycle_t EI(opcode_t) {
     cpu.IME = 1;
+    return 0;
 }
 /* -------------- */
 
@@ -918,11 +954,7 @@ opcode_handler_t opcodes[256] = {
 
     [0xC6] = ADD_reg_to_A,
     [0xD6] = SUB_reg_from_A,
-    [0xE6] = AND_8_reg,
-    [0xF6] = OR_8_reg,
 
     [0xCE] = ADC_reg_to_A,
     [0xDE] = SBC_reg_from_A,
-    [0xEE] = XOR_8_reg,
-    [0xFE] = CP_8_reg,
 };

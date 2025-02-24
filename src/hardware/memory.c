@@ -21,6 +21,7 @@ mem_read(word_t address) {
         printf("MEM: unable to read address 0x%04X\n", address);
         exit(-1);
     }
+    clock.cycles++;
     return memory[address];
 }
 
@@ -45,6 +46,7 @@ void mem_write(word_t address, byte_t value)
         default:
             // regular write
             memory[address] = value;
+            clock.cycles++;
     }
 }
 
