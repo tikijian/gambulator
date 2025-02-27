@@ -24,9 +24,9 @@ int main(int argc, char const *argv[])
     // printf("0x%02X 0x%02X\n", memory[0xff0f], memory[0xff07]);
 
     do {
-        clock.cycles += cpu_exec();
-        
-        timer_update();
+        cycle_t passed_cycles = cpu_exec();
+        timer_update(passed_cycles);
+        clock.cycles += passed_cycles;
     } while (1);
 
     mem_free();

@@ -75,7 +75,7 @@ static cycle_t HALT(opcode_t) {
 }
 
 static cycle_t STOP(opcode_t) {
-    mem_write(REG_DIV, 0);
+    mem_set_value(REG_DIV, 0);
     cpu.stopped = 1;
     // TODO: Implementation
     // return 1;
@@ -684,7 +684,7 @@ static cycle_t CP_8_reg(opcode_t current_opcode) {
 
 // from https://blog.ollien.com/posts/gb-daa/
 static cycle_t DAA(opcode_t) {
-    byte_t offset, carry = 0;
+    byte_t offset = 0, carry = 0;
     byte_t value = cpu.A;
 
     if ((cpu.FN == 0 && (value & 0xF) > 0x09) || cpu.FH) {

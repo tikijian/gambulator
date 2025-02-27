@@ -250,7 +250,7 @@ cycle_t cpu_exec_CB_opcode(opcode_t opcode) {
     }
 
     if (!should_update) {
-        return;
+        return 0;
     }
 
     switch (first_bit(opcode))
@@ -283,4 +283,5 @@ cycle_t cpu_exec_CB_opcode(opcode_t opcode) {
             printf("exec_CB_opcde get target value: unknown case 0x%02x\n", opcode);
             exit(-1);
     }
+    return 0;
 }

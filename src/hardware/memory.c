@@ -12,6 +12,7 @@ byte_t* memory = NULL;
 void*
 mem_init() {
     memory = calloc(MEM_TOTAL + 1, sizeof(byte_t));
+    mem_set_value(REG_DIV, 0xAB);
     return (byte_t*)memory;
 }
 
@@ -23,6 +24,15 @@ mem_read(word_t address) {
     }
     clock.cycles++;
     return memory[address];
+}
+
+byte_t mem_get_value(word_t address)
+{
+    return memory[address];
+}
+byte_t mem_set_value(word_t address, byte_t value)
+{
+    return memory[address] = value;
 }
 
 void
@@ -38,16 +48,8 @@ void mem_write(word_t address, byte_t value)
         exit(-1);
     }
 
-    // custom writes
-    switch (address) {
-        case REG_DIV:
-            memory[address] = 0x00;
-            return;
-        default:
-            // regular write
-            memory[address] = value;
-            clock.cycles++;
-    }
+    memory[address] = value;
+    clock.cycles++;
 }
 
 word_t mem_read_word(word_t current_pc) {

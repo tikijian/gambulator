@@ -5,8 +5,6 @@
 #ifndef _TIMER_H
 # define _TIMER_H
 
-// void timer_update_TIMA();
-// void timer_inc_DIV();
-void timer_update();
+void timer_update(cycle_t passed_cycles);
 
 #endif
