@@ -5,6 +5,7 @@
 #include "timer.h"
 #include "clock.h"
 #include "cpu.h"
+#include "interrupts.h"
 
 #define UPDATE_DIV_AFTER_CYCLES 64 // TODO: check on 256
 
@@ -41,8 +42,8 @@ static void timer_update_TIMA(cycle_t passed_cycles)
         tima_counter -= rate;
         tima++;
         if (tima == 0) {
-            // TODO: request Interrupt
             mem_set_value(REG_TIMA, mem_get_value(REG_TMA));
+            ir_req_timer();
         } else {
             mem_set_value(REG_TIMA, tima);
         }

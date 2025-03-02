@@ -21,5 +21,12 @@
     #define REG_TAC_ENABLE_BIT 2
     #define REG_TAC_CLOCK_BIT_MASK 0b00000011
 
+#define REG_IR_FLAGS 0xFF0F
+#define REG_IR_ENABLE 0xFFFF
+    #define REG_IR_VBLANK_BIT 0
+    #define REG_IR_LCD_BIT 1
+    #define REG_IR_TIMER_BIT 2
+    #define REG_IR_SERIAL_BIT 3
+    #define REG_IR_JOYPAD_BIT 4
 
 #endif

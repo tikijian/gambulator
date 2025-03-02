@@ -8,10 +8,11 @@
 #include "hardware/memory.h"
 #include "hardware/timer.h"
 #include "hardware/clock.h"
+#include "hardware/interrupts.h"
 #include "software/utils.h"
 #include "routines.h"
 
-int main(int argc, char const *argv[])
+int main()
 {
     byte_t* memory_ptr = mem_init();
     
@@ -24,9 +25,15 @@ int main(int argc, char const *argv[])
     // printf("0x%02X 0x%02X\n", memory[0xff0f], memory[0xff07]);
 
     do {
-        cycle_t passed_cycles = cpu_exec();
+        cycle_t initial_cycles = clock.cycles;
+
+        ir_handle();
+         
+        clock.cycles += cpu_exec();
+
+        cycle_t passed_cycles = clock.cycles - initial_cycles;
+        
         timer_update(passed_cycles);
-        clock.cycles += passed_cycles;
     } while (1);
 
     mem_free();

@@ -10,6 +10,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 add_subdirectory(libs/SDL3 EXCLUDE_FROM_ALL)
 # set(CMAKE_C_STANDARD 11)
 
+
 set(SOURCE_FILES
     src/software/utils.c
     src/hardware/cpu.c
@@ -17,6 +18,7 @@ set(SOURCE_FILES
     src/hardware/cpu_helpers.c
     src/hardware/timer.c
     src/hardware/clock.c
+    src/hardware/interrupts.c
     src/main.c
 )
 
@@ -25,6 +27,8 @@ add_executable(
     gambulator
     ${SOURCE_FILES}
 )
+
+target_compile_options(gambulator PRIVATE -Wall -Wextra)
 
 # Link to the actual SDL3 library.
 target_link_libraries(gambulator PRIVATE SDL3::SDL3)
