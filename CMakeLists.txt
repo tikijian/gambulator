@@ -6,10 +6,6 @@ project(gambulator)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 
-# This assumes the SDL source is available in vendored/SDL
-add_subdirectory(libs/SDL3 EXCLUDE_FROM_ALL)
-# set(CMAKE_C_STANDARD 11)
-
 
 set(SOURCE_FILES
     src/software/utils.c
@@ -27,9 +23,8 @@ add_executable(
     gambulator
     ${SOURCE_FILES}
 )
-
 target_compile_options(gambulator PRIVATE -Wall -Wextra)
 
-# Link to the actual SDL3 library.
-target_link_libraries(gambulator PRIVATE SDL3::SDL3)
+add_executable(raylib_main src/raylib_main.c)
+target_link_libraries(raylib_main PUBLIC raylib m)
 # target_compile_options(my_c_program PRIVATE -Wall -Wextra)
