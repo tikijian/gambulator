@@ -30,9 +30,14 @@ struct CPU cpu = {
 
         .IME = 0,
         .stopped = 0,
+        .halted = 0,
 };
 
 cycle_t cpu_exec() {
+    if (cpu.halted) {
+        return 0;
+    }
+
     opcode_t opcode = mem_read(cpu.PC);
 
     if (opcode == OPCODE_PREFIX) {
@@ -70,17 +75,15 @@ cycle_t cpu_exec() {
 
 /* Control Flow-s */
 static cycle_t HALT(opcode_t) {
-    printf("HALT\n");
+    cpu.halted = 1;
     return 0;
 }
 
 static cycle_t STOP(opcode_t) {
     mem_set_value(REG_DIV, 0);
     cpu.stopped = 1;
-    // TODO: Implementation
-    // return 1;
-    printf("STOP\n");
-    exit(0);
+    cpu.halted = 1;
+    return 0;
 }
 
 static cycle_t JP_nn(opcode_t) {

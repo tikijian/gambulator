@@ -19,6 +19,7 @@ struct CPU {
     byte_t IME;
 
     byte_t stopped;
+    byte_t halted;
 };
 
 // I know that globals are bad :D

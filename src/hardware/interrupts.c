@@ -34,12 +34,11 @@ void ir_req_timer()
 
 void ir_handle()
 {
-    if (!cpu.IME) {
+    if (!cpu.IME) { // TODO: possible OR HALTED check
         return;
     }
 
-    // TODO: add HALT handling
-
+    cpu.halted = 0;
     cpu.IME = 0;
 
     byte_t ir_requested = mem_read(REG_IR_FLAGS);
