@@ -15,6 +15,7 @@ set(SOURCE_FILES
     src/hardware/timer.c
     src/hardware/clock.c
     src/hardware/interrupts.c
+    src/hardware/ppu.c
     src/main.c
 )
 

@@ -13,6 +13,7 @@
 #define IR_TIMER_VECTOR 0x0050
 #define IR_SERIAL_VECTOR 0x0058
 #define IR_JOYPAD_VECTOR 0x0060
+#define IR_FLAG_MULTIPLIER 0x1F
 
 static void set_interrupt_flag(word_t type, int flag_bit) {
     byte_t val = mem_get_value(type);
@@ -27,6 +28,11 @@ static void handle_interrupt(int flag_bit, word_t ir_vector, byte_t ir_flags) {
     mem_write(REG_IR_FLAGS, ir_flags); 
 }
 
+static int is_interrupt_enabled() {
+    return (cpu.IME || cpu.halted)
+        && (mem_get_value(REG_IR_ENABLE) & mem_get_value(REG_IR_FLAGS) & IR_FLAG_MULTIPLIER);
+}
+
 void ir_req_timer()
 {
     set_interrupt_flag(REG_IR_FLAGS, REG_IR_TIMER_BIT);
@@ -34,11 +40,15 @@ void ir_req_timer()
 
 void ir_handle()
 {
-    if (!cpu.IME) { // TODO: possible OR HALTED check
+    if (!is_interrupt_enabled()) {
+        return;
+    }
+    cpu.halted = 0;
+
+    if (!cpu.IME) {
         return;
     }
 
-    cpu.halted = 0;
     cpu.IME = 0;
 
     byte_t ir_requested = mem_read(REG_IR_FLAGS);
